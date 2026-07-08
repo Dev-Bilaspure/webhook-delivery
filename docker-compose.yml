@@ -1,0 +1,29 @@
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: webhook-kafka
+    ports:
+      # host:container — lets your Go app (running on the host) reach the broker at localhost:9092
+      - "9092:9092"
+    environment:
+      # --- KRaft identity: this node is both a broker AND the controller (metadata manager) ---
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+
+      # --- Listeners: where the broker BINDS (listens) vs. what address it ADVERTISES to clients ---
+      # LISTENERS = the sockets the broker opens inside the container.
+      # Empty host = bind all interfaces (same as 0.0.0.0), but without poisoning the advertised-listener check
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      # ADVERTISED_LISTENERS = the address the broker HANDS BACK to clients telling them "connect here".
+      # This is THE line people get wrong. See question 1 below.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+      # --- Single-broker settings: with only one broker, nothing can be replicated more than once ---
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      # Don't wait around before letting a lone consumer take its partitions (faster local dev)
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
