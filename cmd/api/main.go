@@ -1,25 +1,18 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
-)
 
-type HealthResponse struct {
-	Health string `json:"health"`
-}
+	"github.com/dev-bilaspure/webhook-delivery/internal/httpapi"
+)
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		healthResponse := HealthResponse{
-			Health: "ok",
-		}
-		json.NewEncoder(w).Encode(healthResponse)
 
-	})
+	mux.HandleFunc("GET /healthz", httpapi.HealthCheck)
+	mux.HandleFunc("POST /events", httpapi.CreateEvent)
+
 	log.Println("Server running on :8000")
 	err := http.ListenAndServe("localhost:8000", mux)
 
