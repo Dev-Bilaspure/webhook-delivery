@@ -5,6 +5,9 @@ services:
     ports:
       # host:container — lets your Go app (running on the host) reach the broker at localhost:9092
       - "9092:9092"
+    volumes:
+      # persist Kafka's log data so topics/messages/offsets survive container recreation
+      - kafka-data:/var/lib/kafka/data
     environment:
       # --- KRaft identity: this node is both a broker AND the controller (metadata manager) ---
       KAFKA_NODE_ID: 1
@@ -27,3 +30,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       # Don't wait around before letting a lone consumer take its partitions (faster local dev)
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Fail loudly if we publish/consume a topic that doesn't exist, instead of silently
+      # auto-creating it with wrong defaults (1 partition). Topics must be provisioned explicitly.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+volumes:
+  kafka-data:

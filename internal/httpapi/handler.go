@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/event"
+	"github.com/dev-bilaspure/webhook-delivery/internal/kafka"
 	"github.com/google/uuid"
 )
 
@@ -15,7 +16,17 @@ type createEventRequest struct {
 	Payload     json.RawMessage `json:"payload"`
 }
 
-func CreateEvent(w http.ResponseWriter, r *http.Request) {
+type Server struct {
+	producer *kafka.Producer
+}
+
+func NewServer(producer *kafka.Producer) *Server {
+	return &Server{
+		producer: producer,
+	}
+}
+
+func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	var req createEventRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -35,7 +46,18 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := writeJson(w, http.StatusAccepted, e); err != nil {
+	eventBytes, err := json.Marshal(e)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to encode event")
+		return
+	}
+
+	if err := s.producer.Publish(r.Context(), e.EndpointURL, eventBytes); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to publish event")
+		return
+	}
+
+	if err := writeJSON(w, http.StatusAccepted, e); err != nil {
 		log.Printf("failed to encode response: %v", err.Error())
 	}
 }
@@ -48,7 +70,7 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	h := healthResponse{
 		Health: "ok",
 	}
-	if err := writeJson(w, http.StatusOK, h); err != nil {
+	if err := writeJSON(w, http.StatusOK, h); err != nil {
 		log.Printf("failed to encode response: %v", err.Error())
 	}
 }
