@@ -46,13 +46,19 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventBytes, err := json.Marshal(e)
+	retryEvent := event.RetryEvent{
+		Event:       e,
+		RetryCount:  0,
+		NextRetryAt: time.Now().UTC(),
+	}
+
+	retryEventBytes, err := json.Marshal(retryEvent)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to encode event")
 		return
 	}
 
-	if err := s.producer.Publish(r.Context(), e.EndpointURL, eventBytes); err != nil {
+	if err := s.producer.Publish(r.Context(), e.EndpointURL, retryEventBytes); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to publish event")
 		return
 	}

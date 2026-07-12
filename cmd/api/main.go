@@ -13,7 +13,7 @@ func main() {
 
 	producer := kafka.NewProducer(
 		[]string{"localhost:9092"},
-		"events",
+		kafka.EventTopic,
 	)
 
 	defer producer.Close()

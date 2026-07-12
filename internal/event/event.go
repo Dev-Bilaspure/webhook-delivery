@@ -14,6 +14,12 @@ type Event struct {
 	CreatedAt   time.Time       `json:"createdAt"`
 }
 
+type RetryEvent struct {
+	Event       Event     `json:"event"`
+	RetryCount  int       `json:"retryCount"`
+	NextRetryAt time.Time `json:"nextRetry"`
+}
+
 func (e Event) ValidateUrl() error {
 	if e.EndpointURL == "" {
 		return errors.New("endpoint URL is required")

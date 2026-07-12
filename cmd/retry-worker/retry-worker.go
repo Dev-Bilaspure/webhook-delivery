@@ -16,7 +16,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	consumer := kafka.NewConsumer([]string{"localhost:9092"}, kafka.EventTopic, kafka.DeliveryGroup)
+	consumer := kafka.NewConsumer([]string{"localhost:9092"}, kafka.RetryTopic, kafka.RetryWorkerGroup)
 	defer consumer.Close()
 
 	deliveryWorker := worker.NewWorker(
@@ -30,7 +30,7 @@ func main() {
 			[]string{"localhost:9092"},
 			kafka.DLQTopic,
 		),
-		worker.DeliveryWorker,
+		worker.RetryWorker,
 	)
 
 	deliveryWorker.Run(ctx)
