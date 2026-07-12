@@ -31,6 +31,7 @@ func (d *Deliverer) Deliver(ctx context.Context, e event.Event) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Idempotency-Key", e.ID)
 
 	resp, err := d.client.Do(req)
 	if err != nil {

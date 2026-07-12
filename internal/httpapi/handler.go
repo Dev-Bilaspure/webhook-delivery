@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type createEventRequest struct {
+type CreateEventRequest struct {
 	EndpointURL string          `json:"endpointURL"`
 	Payload     json.RawMessage `json:"payload"`
 }
@@ -27,10 +27,10 @@ func NewServer(producer *kafka.Producer) *Server {
 }
 
 func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
-	var req createEventRequest
+	var req CreateEventRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		WriteError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
@@ -42,7 +42,7 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := e.ValidateUrl(); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -54,16 +54,16 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 
 	retryEventBytes, err := json.Marshal(retryEvent)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to encode event")
+		WriteError(w, http.StatusInternalServerError, "failed to encode event")
 		return
 	}
 
 	if err := s.producer.Publish(r.Context(), e.EndpointURL, retryEventBytes); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to publish event")
+		WriteError(w, http.StatusInternalServerError, "failed to publish event")
 		return
 	}
 
-	if err := writeJSON(w, http.StatusAccepted, e); err != nil {
+	if err := WriteJSON(w, http.StatusAccepted, e); err != nil {
 		log.Printf("failed to encode response: %v", err.Error())
 	}
 }
@@ -76,7 +76,7 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	h := healthResponse{
 		Health: "ok",
 	}
-	if err := writeJSON(w, http.StatusOK, h); err != nil {
+	if err := WriteJSON(w, http.StatusOK, h); err != nil {
 		log.Printf("failed to encode response: %v", err.Error())
 	}
 }
