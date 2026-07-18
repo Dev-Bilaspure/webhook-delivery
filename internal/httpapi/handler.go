@@ -14,6 +14,7 @@ import (
 type CreateEventRequest struct {
 	EndpointURL string          `json:"endpointURL"`
 	Payload     json.RawMessage `json:"payload"`
+	OrderingKey string          `json:"orderingKey"`
 }
 
 type Server struct {
@@ -37,6 +38,7 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	e := event.Event{
 		ID:          uuid.New().String(),
 		EndpointURL: req.EndpointURL,
+		OrderingKey: req.OrderingKey,
 		Payload:     req.Payload,
 		CreatedAt:   time.Now().UTC(),
 	}
@@ -58,7 +60,12 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.producer.Publish(r.Context(), e.EndpointURL, retryEventBytes); err != nil {
+	partitionKey := e.EndpointURL
+	if e.OrderingKey != "" {
+		partitionKey = e.OrderingKey
+	}
+
+	if err := s.producer.Publish(r.Context(), partitionKey, retryEventBytes); err != nil {
 		WriteError(w, http.StatusInternalServerError, "failed to publish event")
 		return
 	}

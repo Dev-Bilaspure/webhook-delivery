@@ -12,6 +12,7 @@ type Event struct {
 	EndpointURL string          `json:"endpointURL"`
 	Payload     json.RawMessage `json:"payload"`
 	CreatedAt   time.Time       `json:"createdAt"`
+	OrderingKey string          `json:"orderingKey"`
 }
 
 type RetryEvent struct {
