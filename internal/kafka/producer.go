@@ -25,9 +25,10 @@ func (p *Producer) Close() error {
 
 func NewProducer(brokers []string, topic string) *Producer {
 	writer := kafka.Writer{
-		Addr:     kafka.TCP(brokers...),
-		Topic:    topic,
-		Balancer: &kafka.Hash{},
+		Addr:         kafka.TCP(brokers...),
+		Topic:        topic,
+		Balancer:     &kafka.Hash{},
+		RequiredAcks: kafka.RequireAll,
 	}
 
 	p := Producer{
