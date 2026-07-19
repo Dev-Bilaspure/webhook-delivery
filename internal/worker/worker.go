@@ -103,6 +103,9 @@ func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, p
 
 		err := json.Unmarshal(msg.Value, &retryEvent)
 		if err != nil {
+			if err := w.sendToDLQ(ctx, &msg); err != nil {
+				return err
+			}
 			log.Printf("failed to unmarshal message: %v", err)
 			continue
 		}
@@ -115,6 +118,9 @@ func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, p
 
 		u, err := url.Parse(retryEvent.Event.EndpointURL)
 		if err != nil {
+			if err := w.sendToDLQ(ctx, &msg); err != nil {
+				return err
+			}
 			log.Printf("failed to parse the URL for url `%v`: %v", retryEvent.Event.EndpointURL, err)
 			continue
 		}
@@ -174,6 +180,13 @@ func (w *Worker) fetchBatchMessages(ctx context.Context) ([]kafkago.Message, err
 		batchMessages = append(batchMessages, msg)
 	}
 	return batchMessages, nil
+}
+
+func (w *Worker) sendToDLQ(ctx context.Context, msg *kafkago.Message) error {
+	if err := w.dlqProducer.Publish(ctx, string(msg.Key), msg.Value); err != nil {
+		return fmt.Errorf("failed to publish message to dlq: %w", err)
+	}
+	return nil
 }
 
 func (w *Worker) groupMessages(messages []kafkago.Message) map[string][]kafkago.Message {
