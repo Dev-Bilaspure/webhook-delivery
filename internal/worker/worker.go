@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"sync"
 	"time"
 
@@ -58,19 +59,20 @@ func (w *Worker) Run(ctx context.Context) {
 		}
 		messageGroups := w.groupMessages(batchMessages)
 
-		sem := make(chan struct{}, maxConcurrency)
+		globalSem := make(chan struct{}, maxConcurrency)
+
+		perHostSem := make(map[string]chan struct{})
+		mu := sync.Mutex{}
 
 		isGroupSuccessChan := make(chan bool, len(messageGroups))
 
 		for _, msgs := range messageGroups {
 			wg.Add(1)
-			sem <- struct{}{}
 			go func(msgs []kafkago.Message) {
 				defer func() {
 					wg.Done()
-					<-sem
 				}()
-				if err := w.deliverGroup(ctx, msgs); err != nil {
+				if err := w.deliverGroup(ctx, msgs, perHostSem, &mu, globalSem); err != nil {
 					isGroupSuccessChan <- false
 				} else {
 					isGroupSuccessChan <- true
@@ -95,7 +97,7 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 }
 
-func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message) error {
+func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, perHostSem map[string]chan struct{}, mu *sync.Mutex, globalSem chan struct{}) error {
 	for _, msg := range messages {
 		retryEvent := event.RetryEvent{}
 
@@ -111,13 +113,43 @@ func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message) e
 			}
 		}
 
-		if err := w.deliverer.Deliver(ctx, retryEvent.Event); err != nil {
-			if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
-				return err
+		u, err := url.Parse(retryEvent.Event.EndpointURL)
+		if err != nil {
+			log.Printf("failed to parse the URL for url `%v`: %v", retryEvent.Event.EndpointURL, err)
+			continue
+		}
+		hostUrl := u.Host
+
+		if err := func() error {
+			mu.Lock()
+			hostChan, ok := perHostSem[hostUrl]
+			if !ok {
+				perHostSem[hostUrl] = make(chan struct{}, maxConcurrencyPerHost)
+				hostChan = perHostSem[hostUrl]
 			}
-			log.Printf("failed to deliver msg for Key %s: %v", msg.Key, err)
-		} else {
-			log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
+			mu.Unlock()
+
+			hostChan <- struct{}{}
+			defer func() {
+				<-hostChan
+			}()
+
+			globalSem <- struct{}{}
+			defer func() {
+				<-globalSem
+			}()
+
+			if err := w.deliverer.Deliver(ctx, retryEvent.Event); err != nil {
+				if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
+					return err
+				}
+				log.Printf("failed to deliver msg for Key %s: %v", msg.Key, err)
+			} else {
+				log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
+			}
+			return nil
+		}(); err != nil {
+			return err
 		}
 	}
 	return nil

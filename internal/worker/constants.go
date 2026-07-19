@@ -8,5 +8,7 @@ const (
 
 	batchCapacity    = 50
 	batchFillTimeout = time.Millisecond * 200
-	maxConcurrency   = 8
+	maxConcurrency   = 10
+
+	maxConcurrencyPerHost = 5
 )
