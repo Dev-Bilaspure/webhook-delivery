@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 	"time"
+
+	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/delivery"
 	"github.com/dev-bilaspure/webhook-delivery/internal/event"
@@ -40,20 +43,65 @@ func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryPro
 
 func (w *Worker) Run(ctx context.Context) {
 	for {
-		msg, err := w.consumer.Fetch(ctx)
+		wg := sync.WaitGroup{}
+
+		batchMessages, err := w.fetchBatchMessages(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				break
 			}
-			log.Printf("failed to fetch message: %v", err)
+			log.Printf("failed to fetch the message batch: %v", err)
 			continue
 		}
+		if len(batchMessages) == 0 {
+			continue
+		}
+		messageGroups := w.groupMessages(batchMessages)
 
-		var retryEvent event.RetryEvent
+		sem := make(chan struct{}, maxConcurrency)
 
-		if err := json.Unmarshal(msg.Value, &retryEvent); err != nil {
-			log.Printf("failed to Unmarshal msg.Value: %v", err)
-			w.consumer.Commit(ctx, msg)
+		isGroupSuccessChan := make(chan bool, len(messageGroups))
+
+		for _, msgs := range messageGroups {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(msgs []kafkago.Message) {
+				defer func() {
+					wg.Done()
+					<-sem
+				}()
+				if err := w.deliverGroup(ctx, msgs); err != nil {
+					isGroupSuccessChan <- false
+				} else {
+					isGroupSuccessChan <- true
+				}
+			}(msgs)
+		}
+		wg.Wait()
+		close(isGroupSuccessChan)
+
+		isBatchSuccess := true
+		for isGroupSuccess := range isGroupSuccessChan {
+			if !isGroupSuccess {
+				isBatchSuccess = false
+			}
+		}
+		if !isBatchSuccess {
+			continue
+		}
+		if err := w.consumer.Commit(ctx, batchMessages...); err != nil {
+			log.Printf("failed to commit batch: %v", err)
+		}
+	}
+}
+
+func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message) error {
+	for _, msg := range messages {
+		retryEvent := event.RetryEvent{}
+
+		err := json.Unmarshal(msg.Value, &retryEvent)
+		if err != nil {
+			log.Printf("failed to unmarshal message: %v", err)
 			continue
 		}
 
@@ -65,16 +113,43 @@ func (w *Worker) Run(ctx context.Context) {
 
 		if err := w.deliverer.Deliver(ctx, retryEvent.Event); err != nil {
 			if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
-				log.Printf("failed to handle retry: %v", err)
-				continue
+				return err
 			}
 			log.Printf("failed to deliver msg for Key %s: %v", msg.Key, err)
 		} else {
 			log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
 		}
-
-		w.consumer.Commit(ctx, msg)
 	}
+	return nil
+}
+
+func (w *Worker) fetchBatchMessages(ctx context.Context) ([]kafkago.Message, error) {
+	fillCtx, cancel := context.WithTimeout(ctx, batchFillTimeout)
+	defer cancel()
+	batchMessages := make([]kafkago.Message, 0, batchCapacity)
+
+	for len(batchMessages) < batchCapacity {
+		msg, err := w.consumer.Fetch(fillCtx)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil, ctx.Err() // parent context cancelled
+			}
+			if fillCtx.Err() != nil {
+				break // fill timeout expired
+			}
+			return nil, err // some other kafka error
+		}
+		batchMessages = append(batchMessages, msg)
+	}
+	return batchMessages, nil
+}
+
+func (w *Worker) groupMessages(messages []kafkago.Message) map[string][]kafkago.Message {
+	groups := make(map[string][]kafkago.Message)
+	for _, msg := range messages {
+		groups[string(msg.Key)] = append(groups[string(msg.Key)], msg)
+	}
+	return groups
 }
 
 func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *event.RetryEvent) error {
