@@ -11,6 +11,7 @@ import (
 
 	kafkago "github.com/segmentio/kafka-go"
 
+	"github.com/dev-bilaspure/webhook-delivery/internal/breaker"
 	"github.com/dev-bilaspure/webhook-delivery/internal/delivery"
 	"github.com/dev-bilaspure/webhook-delivery/internal/event"
 	"github.com/dev-bilaspure/webhook-delivery/internal/kafka"
@@ -43,6 +44,8 @@ func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryPro
 }
 
 func (w *Worker) Run(ctx context.Context) {
+	hostBreakerMap := make(map[string]*breaker.Breaker)
+	mu := sync.Mutex{}
 	for {
 		wg := sync.WaitGroup{}
 
@@ -60,9 +63,7 @@ func (w *Worker) Run(ctx context.Context) {
 		messageGroups := w.groupMessages(batchMessages)
 
 		globalSem := make(chan struct{}, maxConcurrency)
-
 		perHostSem := make(map[string]chan struct{})
-		mu := sync.Mutex{}
 
 		isGroupSuccessChan := make(chan bool, len(messageGroups))
 
@@ -72,7 +73,7 @@ func (w *Worker) Run(ctx context.Context) {
 				defer func() {
 					wg.Done()
 				}()
-				if err := w.deliverGroup(ctx, msgs, perHostSem, &mu, globalSem); err != nil {
+				if err := w.deliverGroup(ctx, msgs, perHostSem, &mu, globalSem, hostBreakerMap); err != nil {
 					isGroupSuccessChan <- false
 				} else {
 					isGroupSuccessChan <- true
@@ -97,7 +98,14 @@ func (w *Worker) Run(ctx context.Context) {
 	}
 }
 
-func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, perHostSem map[string]chan struct{}, mu *sync.Mutex, globalSem chan struct{}) error {
+func (w *Worker) deliverGroup(
+	ctx context.Context,
+	messages []kafkago.Message,
+	perHostSem map[string]chan struct{},
+	mu *sync.Mutex,
+	globalSem chan struct{},
+	hostBreakerMap map[string]*breaker.Breaker,
+) error {
 	for _, msg := range messages {
 		retryEvent := event.RetryEvent{}
 
@@ -124,14 +132,31 @@ func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, p
 			log.Printf("failed to parse the URL for url `%v`: %v", retryEvent.Event.EndpointURL, err)
 			continue
 		}
-		hostUrl := u.Host
+		host := u.Host
+
+		mu.Lock()
+		hostBreaker, isBreakerExists := hostBreakerMap[host]
+		if !isBreakerExists {
+			hostBreakerMap[host] = breaker.NewBreaker(breakerFailureThreshold, breakerCooldown)
+			hostBreaker = hostBreakerMap[host]
+		}
+		allowed := hostBreaker.Allow()
+		mu.Unlock()
+
+		if !allowed {
+			if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
+				return err
+			}
+			log.Printf("breaker open for %v; routed to retries", host)
+			continue
+		}
 
 		if err := func() error {
 			mu.Lock()
-			hostChan, ok := perHostSem[hostUrl]
+			hostChan, ok := perHostSem[host]
 			if !ok {
-				perHostSem[hostUrl] = make(chan struct{}, maxConcurrencyPerHost)
-				hostChan = perHostSem[hostUrl]
+				perHostSem[host] = make(chan struct{}, maxConcurrencyPerHost)
+				hostChan = perHostSem[host]
 			}
 			mu.Unlock()
 
@@ -146,11 +171,17 @@ func (w *Worker) deliverGroup(ctx context.Context, messages []kafkago.Message, p
 			}()
 
 			if err := w.deliverer.Deliver(ctx, retryEvent.Event); err != nil {
+				mu.Lock()
+				hostBreaker.RecordFailure()
+				mu.Unlock()
 				if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
 					return err
 				}
 				log.Printf("failed to deliver msg for Key %s: %v", msg.Key, err)
 			} else {
+				mu.Lock()
+				hostBreaker.RecordSuccess()
+				mu.Unlock()
 				log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
 			}
 			return nil

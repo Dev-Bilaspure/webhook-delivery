@@ -11,4 +11,7 @@ const (
 	maxConcurrency   = 10
 
 	maxConcurrencyPerHost = 5
+
+	breakerCooldown         = 45 * time.Second
+	breakerFailureThreshold = 5
 )
