@@ -3,36 +3,97 @@ services:
     image: apache/kafka:3.9.0
     container_name: webhook-kafka
     ports:
-      # host:container — lets your Go app (running on the host) reach the broker at localhost:9092
       - "9092:9092"
     volumes:
-      # persist Kafka's log data so topics/messages/offsets survive container recreation
       - kafka-data:/var/lib/kafka/data
     environment:
-      # --- KRaft identity: this node is both a broker AND the controller (metadata manager) ---
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-
-      # --- Listeners: where the broker BINDS (listens) vs. what address it ADVERTISES to clients ---
-      # LISTENERS = the sockets the broker opens inside the container.
-      # Empty host = bind all interfaces (same as 0.0.0.0), but without poisoning the advertised-listener check
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      # ADVERTISED_LISTENERS = the address the broker HANDS BACK to clients telling them "connect here".
-      # This is THE line people get wrong. See question 1 below.
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # HOST listener for tools on localhost:9092, DOCKER listener for other containers.
+      KAFKA_LISTENERS: HOST://:9092,DOCKER://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,HOST:PLAINTEXT,DOCKER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-
-      # --- Single-broker settings: with only one broker, nothing can be replicated more than once ---
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      # Don't wait around before letting a lone consumer take its partitions (faster local dev)
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      # Fail loudly if we publish/consume a topic that doesn't exist, instead of silently
-      # auto-creating it with wrong defaults (1 partition). Topics must be provisioned explicitly.
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        for t in events retries dead-letter; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 \
+            --create --if-not-exists --topic "$$t" --partitions 3 --replication-factor 1
+        done
+
+  api:
+    build:
+      context: .
+      args:
+        SERVICE: api
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      API_ADDR: ":8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      args:
+        SERVICE: worker
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS: kafka:29092
+    deploy:
+      replicas: 3
+    restart: unless-stopped
+
+  retry-worker:
+    build:
+      context: .
+      args:
+        SERVICE: retry-worker
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_BROKERS: kafka:29092
+    restart: unless-stopped
+
+  webhook-accept-api:
+    build:
+      context: .
+      args:
+        SERVICE: webhook-accept-api
+    environment:
+      RECEIVER_ADDR: ":8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 
 volumes:
   kafka-data:
