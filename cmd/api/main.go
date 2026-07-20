@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dev-bilaspure/webhook-delivery/internal/config"
 	"github.com/dev-bilaspure/webhook-delivery/internal/httpapi"
 	"github.com/dev-bilaspure/webhook-delivery/internal/kafka"
 )
@@ -17,9 +18,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	cfg := config.Load()
+
 	producer := kafka.NewProducer(
-		[]string{"localhost:9092"},
-		kafka.EventTopic,
+		cfg.KafkaBrokers,
+		cfg.EventsTopic,
 	)
 
 	apiServer := httpapi.NewServer(producer)
@@ -30,7 +33,7 @@ func main() {
 	mux.HandleFunc("POST /events", apiServer.CreateEvent)
 
 	server := &http.Server{
-		Addr:              ":8000",
+		Addr:              cfg.APIAddr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
@@ -43,7 +46,7 @@ func main() {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
-	log.Printf("server is listening on port :8000")
+	log.Printf("server is listening on %s", cfg.APIAddr)
 
 	<-ctx.Done()
 	log.Println("shutdown signal received")

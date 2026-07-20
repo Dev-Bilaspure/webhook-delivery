@@ -15,9 +15,9 @@ type Deliverer struct {
 	client *http.Client
 }
 
-func NewDeliverer() *Deliverer {
+func NewDeliverer(timeout time.Duration) *Deliverer {
 	client := http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: timeout,
 	}
 	return &Deliverer{
 		client: &client,

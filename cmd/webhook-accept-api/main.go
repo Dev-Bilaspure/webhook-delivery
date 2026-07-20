@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/dev-bilaspure/webhook-delivery/internal/config"
 	"github.com/dev-bilaspure/webhook-delivery/internal/httpapi"
 )
 
 func main() {
+	cfg := config.Load()
+
 	mux := http.NewServeMux()
 
 	eventKeyStore := make(map[string]bool)
@@ -54,7 +57,7 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    cfg.ReceiverAddr,
 		Handler: mux,
 	}
 

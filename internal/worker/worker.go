@@ -12,6 +12,7 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/breaker"
+	"github.com/dev-bilaspure/webhook-delivery/internal/config"
 	"github.com/dev-bilaspure/webhook-delivery/internal/delivery"
 	"github.com/dev-bilaspure/webhook-delivery/internal/event"
 	"github.com/dev-bilaspure/webhook-delivery/internal/kafka"
@@ -31,15 +32,17 @@ type Worker struct {
 	retryProducer *kafka.Producer
 	dlqProducer   *kafka.Producer
 	workerType    WorkerType
+	cfg           config.Config
 }
 
-func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer *kafka.Producer, dlqProducer *kafka.Producer, workerType WorkerType) *Worker {
+func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer *kafka.Producer, dlqProducer *kafka.Producer, workerType WorkerType, cfg config.Config) *Worker {
 	return &Worker{
 		consumer:      consumer,
 		deliverer:     deliverer,
 		retryProducer: retryProducer,
 		dlqProducer:   dlqProducer,
 		workerType:    workerType,
+		cfg:           cfg,
 	}
 }
 
@@ -62,7 +65,7 @@ func (w *Worker) Run(ctx context.Context) {
 		}
 		messageGroups := w.groupMessages(batchMessages)
 
-		globalSem := make(chan struct{}, maxConcurrency)
+		globalSem := make(chan struct{}, w.cfg.MaxConcurrency)
 		perHostSem := make(map[string]chan struct{})
 
 		isGroupSuccessChan := make(chan bool, len(messageGroups))
@@ -137,7 +140,7 @@ func (w *Worker) deliverGroup(
 		mu.Lock()
 		hostBreaker, isBreakerExists := hostBreakerMap[host]
 		if !isBreakerExists {
-			hostBreakerMap[host] = breaker.NewBreaker(breakerFailureThreshold, breakerCooldown)
+			hostBreakerMap[host] = breaker.NewBreaker(w.cfg.BreakerFailureThreshold, w.cfg.BreakerCooldown)
 			hostBreaker = hostBreakerMap[host]
 		}
 		allowed := hostBreaker.Allow()
@@ -155,7 +158,7 @@ func (w *Worker) deliverGroup(
 			mu.Lock()
 			hostChan, ok := perHostSem[host]
 			if !ok {
-				perHostSem[host] = make(chan struct{}, maxConcurrencyPerHost)
+				perHostSem[host] = make(chan struct{}, w.cfg.MaxConcurrencyPerHost)
 				hostChan = perHostSem[host]
 			}
 			mu.Unlock()
@@ -193,11 +196,11 @@ func (w *Worker) deliverGroup(
 }
 
 func (w *Worker) fetchBatchMessages(ctx context.Context) ([]kafkago.Message, error) {
-	fillCtx, cancel := context.WithTimeout(ctx, batchFillTimeout)
+	fillCtx, cancel := context.WithTimeout(ctx, w.cfg.BatchFillTimeout)
 	defer cancel()
-	batchMessages := make([]kafkago.Message, 0, batchCapacity)
+	batchMessages := make([]kafkago.Message, 0, w.cfg.BatchCapacity)
 
-	for len(batchMessages) < batchCapacity {
+	for len(batchMessages) < w.cfg.BatchCapacity {
 		msg, err := w.consumer.Fetch(fillCtx)
 		if err != nil {
 			if ctx.Err() != nil {
@@ -231,7 +234,7 @@ func (w *Worker) groupMessages(messages []kafkago.Message) map[string][]kafkago.
 func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *event.RetryEvent) error {
 	retryEvent.RetryCount++
 
-	if retryEvent.RetryCount >= retryCountLimit {
+	if retryEvent.RetryCount >= w.cfg.RetryCountLimit {
 		retryEventBytes, err := json.Marshal(retryEvent)
 		if err != nil {
 			return fmt.Errorf("failed to marshal retry event: %w", err)
@@ -249,7 +252,7 @@ func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *even
 		return nil
 	}
 
-	retryEvent.NextRetryAt = getNextRetryAt(retryEvent.RetryCount)
+	retryEvent.NextRetryAt = w.getNextRetryAt(retryEvent.RetryCount)
 
 	retryEventBytes, err := json.Marshal(retryEvent)
 	if err != nil {
@@ -270,8 +273,8 @@ func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *even
 	return nil
 }
 
-func getNextRetryAt(retryCount int) time.Time {
-	backoff := baseBackoff * time.Duration(1<<retryCount)
+func (w *Worker) getNextRetryAt(retryCount int) time.Time {
+	backoff := w.cfg.BaseBackoff * time.Duration(1<<retryCount)
 	return time.Now().UTC().Add(backoff)
 }
 
