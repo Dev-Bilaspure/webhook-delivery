@@ -1,0 +1,9 @@
+.git
+.github
+*.md
+Makefile
+docker-compose.yml
+.dockerignore
+.golangci.yml
+.env
+.env.example
