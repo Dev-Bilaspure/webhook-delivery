@@ -163,12 +163,16 @@ func (w *Worker) deliverGroup(
 			}
 			mu.Unlock()
 
-			hostChan <- struct{}{}
+			if err := acquire(ctx, hostChan); err != nil {
+				return err
+			}
 			defer func() {
 				<-hostChan
 			}()
 
-			globalSem <- struct{}{}
+			if err := acquire(ctx, globalSem); err != nil {
+				return err
+			}
 			defer func() {
 				<-globalSem
 			}()
@@ -276,6 +280,16 @@ func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *even
 func (w *Worker) getNextRetryAt(retryCount int) time.Time {
 	backoff := w.cfg.BaseBackoff * time.Duration(1<<retryCount)
 	return time.Now().UTC().Add(backoff)
+}
+
+func acquire(ctx context.Context, sem chan struct{}) error {
+	select {
+	case sem <- struct{}{}:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func waitUntil(ctx context.Context, t time.Time) error {
