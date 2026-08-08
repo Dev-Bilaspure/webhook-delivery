@@ -123,7 +123,7 @@ func (w *Worker) deliverGroup(
 
 		if w.workerType == RetryWorker {
 			if err := waitUntil(ctx, retryEvent.NextRetryAt); err != nil {
-				break
+				return err
 			}
 		}
 
