@@ -152,7 +152,7 @@ func (w *Worker) deliverGroup(
 
 		if !allowed {
 			log.Printf("breaker open for %v; routed to retries", host)
-			return w.retryGroupFrom(ctx, messages[i:], &retryEvent)
+			return w.deferGroupFrom(ctx, messages[i:], &retryEvent)
 		}
 
 		var deliverErr error
@@ -219,6 +219,25 @@ func (w *Worker) retryGroupFrom(ctx context.Context, messages []kafkago.Message,
 		return err
 	}
 
+	return w.deferTail(ctx, messages, head.NextRetryAt)
+}
+
+func (w *Worker) deferGroupFrom(ctx context.Context, messages []kafkago.Message, head *event.RetryEvent) error {
+	head.NextRetryAt = time.Now().UTC().Add(w.cfg.BreakerCooldown)
+
+	headBytes, err := json.Marshal(head)
+	if err != nil {
+		return fmt.Errorf("failed to marshal retry event: %w", err)
+	}
+
+	if err := w.retryProducer.Publish(ctx, string(messages[0].Key), headBytes); err != nil {
+		return fmt.Errorf("failed to publish retry message %w", err)
+	}
+
+	return w.deferTail(ctx, messages, head.NextRetryAt)
+}
+
+func (w *Worker) deferTail(ctx context.Context, messages []kafkago.Message, nextRetryAt time.Time) error {
 	for _, msg := range messages[1:] {
 		retryEvent := event.RetryEvent{}
 
@@ -230,7 +249,7 @@ func (w *Worker) retryGroupFrom(ctx context.Context, messages []kafkago.Message,
 			continue
 		}
 
-		retryEvent.NextRetryAt = head.NextRetryAt
+		retryEvent.NextRetryAt = nextRetryAt
 
 		retryEventBytes, err := json.Marshal(retryEvent)
 		if err != nil {
