@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 	"time"
@@ -195,6 +196,81 @@ func TestDeliverGroupDeadLettersPermanentRejections(t *testing.T) {
 
 	if len(retryProducer.messages) != 0 {
 		t.Fatalf("published %d messages to retries, want 0; a permanent rejection cannot succeed on retry", len(retryProducer.messages))
+	}
+}
+
+func TestDeliverGroupKeepsRetryBudgetWhenBreakerIsOpen(t *testing.T) {
+	var received int
+
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer endpoint.Close()
+
+	u, err := url.Parse(endpoint.URL)
+	if err != nil {
+		t.Fatalf("failed to parse endpoint url: %v", err)
+	}
+
+	cfg := testConfig()
+	cfg.BaseBackoff = time.Second
+	cfg.BreakerCooldown = 30 * time.Second
+	cfg.BreakerFailureThreshold = 1
+
+	openBreaker := breaker.NewBreaker(cfg.BreakerFailureThreshold, cfg.BreakerCooldown)
+	openBreaker.RecordFailure()
+
+	retryProducer := &recordingPublisher{}
+	dlqProducer := &recordingPublisher{}
+
+	w := &Worker{
+		deliverer:     delivery.NewDeliverer(time.Second),
+		retryProducer: retryProducer,
+		dlqProducer:   dlqProducer,
+		workerType:    DeliveryWorker,
+		cfg:           cfg,
+	}
+
+	msgs := make([]kafkago.Message, 0, 3)
+	for _, id := range []string{"event-1", "event-2", "event-3"} {
+		msgs = append(msgs, testMessageTo(t, "key-1", id, endpoint.URL, time.Now()))
+	}
+
+	before := time.Now().UTC()
+
+	if err := w.deliverGroup(
+		context.Background(),
+		msgs,
+		map[string]chan struct{}{},
+		&sync.Mutex{},
+		make(chan struct{}, cfg.MaxConcurrency),
+		map[string]*breaker.Breaker{u.Host: openBreaker},
+	); err != nil {
+		t.Fatalf("deliverGroup returned %v, want nil", err)
+	}
+
+	if received != 0 {
+		t.Fatalf("endpoint received %d requests, want 0; an open breaker must not attempt delivery", received)
+	}
+
+	published := retryProducer.events(t)
+	if len(published) != 3 {
+		t.Fatalf("published %d messages to retries, want 3", len(published))
+	}
+
+	for _, e := range published {
+		if e.RetryCount != 0 {
+			t.Fatalf("message %s has RetryCount %d, want 0; a refused message spent no attempt", e.Event.ID, e.RetryCount)
+		}
+
+		if e.NextRetryAt.Before(before.Add(cfg.BreakerCooldown / 2)) {
+			t.Fatalf("message %s is due at %v, too soon; it should wait for the breaker cooldown, not the backoff ladder", e.Event.ID, e.NextRetryAt)
+		}
+	}
+
+	if len(dlqProducer.messages) != 0 {
+		t.Fatalf("dead-lettered %d messages, want 0", len(dlqProducer.messages))
 	}
 }
 
