@@ -145,6 +145,59 @@ func TestDeliverGroupDefersQueuedMessagesAfterAFailure(t *testing.T) {
 	}
 }
 
+func TestDeliverGroupDeadLettersPermanentRejections(t *testing.T) {
+	var received []string
+
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = append(received, r.Header.Get("Idempotency-Key"))
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer endpoint.Close()
+
+	retryProducer := &recordingPublisher{}
+	dlqProducer := &recordingPublisher{}
+
+	cfg := testConfig()
+	cfg.BreakerFailureThreshold = 1
+
+	w := &Worker{
+		deliverer:     delivery.NewDeliverer(time.Second),
+		retryProducer: retryProducer,
+		dlqProducer:   dlqProducer,
+		workerType:    DeliveryWorker,
+		cfg:           cfg,
+	}
+
+	msgs := make([]kafkago.Message, 0, 3)
+	for _, id := range []string{"event-1", "event-2", "event-3"} {
+		msgs = append(msgs, testMessageTo(t, "key-1", id, endpoint.URL, time.Now()))
+	}
+
+	err := w.deliverGroup(
+		context.Background(),
+		msgs,
+		map[string]chan struct{}{},
+		&sync.Mutex{},
+		make(chan struct{}, w.cfg.MaxConcurrency),
+		map[string]*breaker.Breaker{},
+	)
+	if err != nil {
+		t.Fatalf("deliverGroup returned %v, want nil", err)
+	}
+
+	if len(received) != 3 {
+		t.Fatalf("endpoint received %d requests, want 3; a rejected payload tripped the breaker on a healthy host", len(received))
+	}
+
+	if len(dlqProducer.messages) != 3 {
+		t.Fatalf("dead-lettered %d messages, want 3", len(dlqProducer.messages))
+	}
+
+	if len(retryProducer.messages) != 0 {
+		t.Fatalf("published %d messages to retries, want 0; a permanent rejection cannot succeed on retry", len(retryProducer.messages))
+	}
+}
+
 func TestDeliverGroupFailsWhenRetryWaitIsCancelled(t *testing.T) {
 	w := &Worker{workerType: RetryWorker, cfg: testConfig()}
 
