@@ -26,16 +26,20 @@ const (
 	DLQWorker      WorkerType = "dlq_worker"
 )
 
+type Publisher interface {
+	Publish(ctx context.Context, key string, value []byte) error
+}
+
 type Worker struct {
 	consumer      *kafka.Consumer
 	deliverer     *delivery.Deliverer
-	retryProducer *kafka.Producer
-	dlqProducer   *kafka.Producer
+	retryProducer Publisher
+	dlqProducer   Publisher
 	workerType    WorkerType
 	cfg           config.Config
 }
 
-func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer *kafka.Producer, dlqProducer *kafka.Producer, workerType WorkerType, cfg config.Config) *Worker {
+func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer Publisher, dlqProducer Publisher, workerType WorkerType, cfg config.Config) *Worker {
 	return &Worker{
 		consumer:      consumer,
 		deliverer:     deliverer,
