@@ -22,22 +22,28 @@ func main() {
 	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.RetriesTopic, cfg.RetryGroup)
 	defer consumer.Close()
 
-	deliveryWorker := worker.NewWorker(
+	retryProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.RetriesTopic)
+	dlqProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.DLQTopic)
+
+	retryWorker := worker.NewWorker(
 		consumer,
 		delivery.NewDeliverer(cfg.DeliveryTimeout),
-		kafka.NewProducer(
-			cfg.KafkaBrokers,
-			cfg.RetriesTopic,
-		),
-		kafka.NewProducer(
-			cfg.KafkaBrokers,
-			cfg.DLQTopic,
-		),
+		retryProducer,
+		dlqProducer,
 		worker.RetryWorker,
 		cfg,
 	)
 
-	deliveryWorker.Run(ctx)
+	retryWorker.Run(ctx)
+	log.Println("shutdown signal received")
+
+	if err := retryProducer.Close(); err != nil {
+		log.Printf("retry producer close error: %v", err)
+	}
+
+	if err := dlqProducer.Close(); err != nil {
+		log.Printf("dlq producer close error: %v", err)
+	}
 
 	log.Println("worker shut down cleanly")
 }
