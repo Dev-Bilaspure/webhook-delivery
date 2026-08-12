@@ -183,10 +183,10 @@ func (w *Worker) deliverGroup(
 			deliverErr = w.deliverer.Deliver(ctx, retryEvent.Event)
 
 			mu.Lock()
-			if deliverErr != nil {
-				hostBreaker.RecordFailure()
-			} else {
+			if deliverErr == nil {
 				hostBreaker.RecordSuccess()
+			} else if !delivery.IsPermanent(deliverErr) {
+				hostBreaker.RecordFailure()
 			}
 			mu.Unlock()
 
@@ -197,6 +197,15 @@ func (w *Worker) deliverGroup(
 
 		if deliverErr != nil {
 			log.Printf("failed to deliver msg for Key %s: %v", msg.Key, deliverErr)
+
+			if delivery.IsPermanent(deliverErr) {
+				if err := w.sendToDLQ(ctx, &msg); err != nil {
+					return err
+				}
+				log.Printf("message %s rejected permanently; moved to dead-letter queue", retryEvent.Event.ID)
+				continue
+			}
+
 			return w.retryGroupFrom(ctx, messages[i:], &retryEvent)
 		}
 
