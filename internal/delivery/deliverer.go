@@ -3,6 +3,7 @@ package delivery
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,28 @@ import (
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/event"
 )
+
+type StatusError struct {
+	StatusCode int
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("error delivering msg with statusCode: %v", e.StatusCode)
+}
+
+func IsPermanent(err error) bool {
+	var statusErr *StatusError
+	if !errors.As(err, &statusErr) {
+		return false
+	}
+
+	if statusErr.StatusCode < 400 || statusErr.StatusCode >= 500 {
+		return false
+	}
+
+	return statusErr.StatusCode != http.StatusRequestTimeout &&
+		statusErr.StatusCode != http.StatusTooManyRequests
+}
 
 type Deliverer struct {
 	client *http.Client
@@ -44,7 +67,7 @@ func (d *Deliverer) Deliver(ctx context.Context, e event.Event) error {
 	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("error delivering msg with statusCode: %v", resp.StatusCode)
+		return &StatusError{StatusCode: resp.StatusCode}
 	}
 
 	return nil
