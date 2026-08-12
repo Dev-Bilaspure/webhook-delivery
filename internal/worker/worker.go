@@ -113,7 +113,7 @@ func (w *Worker) deliverGroup(
 	globalSem chan struct{},
 	hostBreakerMap map[string]*breaker.Breaker,
 ) error {
-	for _, msg := range messages {
+	for i, msg := range messages {
 		retryEvent := event.RetryEvent{}
 
 		err := json.Unmarshal(msg.Value, &retryEvent)
@@ -151,12 +151,11 @@ func (w *Worker) deliverGroup(
 		mu.Unlock()
 
 		if !allowed {
-			if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
-				return err
-			}
 			log.Printf("breaker open for %v; routed to retries", host)
-			continue
+			return w.retryGroupFrom(ctx, messages[i:], &retryEvent)
 		}
+
+		var deliverErr error
 
 		if err := func() error {
 			mu.Lock()
@@ -181,25 +180,63 @@ func (w *Worker) deliverGroup(
 				<-globalSem
 			}()
 
-			if err := w.deliverer.Deliver(ctx, retryEvent.Event); err != nil {
-				mu.Lock()
+			deliverErr = w.deliverer.Deliver(ctx, retryEvent.Event)
+
+			mu.Lock()
+			if deliverErr != nil {
 				hostBreaker.RecordFailure()
-				mu.Unlock()
-				if err := w.handleFailure(ctx, string(msg.Key), &retryEvent); err != nil {
-					return err
-				}
-				log.Printf("failed to deliver msg for Key %s: %v", msg.Key, err)
 			} else {
-				mu.Lock()
 				hostBreaker.RecordSuccess()
-				mu.Unlock()
-				log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
 			}
+			mu.Unlock()
+
 			return nil
 		}(); err != nil {
 			return err
 		}
+
+		if deliverErr != nil {
+			log.Printf("failed to deliver msg for Key %s: %v", msg.Key, deliverErr)
+			return w.retryGroupFrom(ctx, messages[i:], &retryEvent)
+		}
+
+		log.Printf("delivered %s to %s", retryEvent.Event.ID, retryEvent.Event.EndpointURL)
 	}
+	return nil
+}
+
+func (w *Worker) retryGroupFrom(ctx context.Context, messages []kafkago.Message, head *event.RetryEvent) error {
+	if err := w.handleFailure(ctx, string(messages[0].Key), head); err != nil {
+		return err
+	}
+
+	for _, msg := range messages[1:] {
+		retryEvent := event.RetryEvent{}
+
+		if err := json.Unmarshal(msg.Value, &retryEvent); err != nil {
+			if err := w.sendToDLQ(ctx, &msg); err != nil {
+				return err
+			}
+			log.Printf("failed to unmarshal message: %v", err)
+			continue
+		}
+
+		retryEvent.NextRetryAt = head.NextRetryAt
+
+		retryEventBytes, err := json.Marshal(retryEvent)
+		if err != nil {
+			return fmt.Errorf("failed to marshal retry event: %w", err)
+		}
+
+		if err := w.retryProducer.Publish(ctx, string(msg.Key), retryEventBytes); err != nil {
+			return fmt.Errorf("failed to publish retry message %w", err)
+		}
+	}
+
+	if len(messages) > 1 {
+		log.Printf("deferred %d queued messages for key %s to preserve ordering", len(messages)-1, messages[0].Key)
+	}
+
 	return nil
 }
 
