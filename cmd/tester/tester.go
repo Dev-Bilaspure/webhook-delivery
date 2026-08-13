@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -19,13 +20,19 @@ import (
 	"github.com/dev-bilaspure/webhook-delivery/internal/receiver"
 )
 
+const drainPoll = time.Second
+
 type options struct {
-	apiURL      string
-	endpoints   []string
-	events      int
-	keys        int
-	concurrency int
-	timeout     time.Duration
+	apiURL       string
+	statsURL     string
+	endpoints    []string
+	events       int
+	keys         int
+	concurrency  int
+	timeout      time.Duration
+	wait         bool
+	drainQuiet   time.Duration
+	drainTimeout time.Duration
 }
 
 type job struct {
@@ -50,6 +57,16 @@ func (r *results) rejected() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.failed++
+}
+
+func (r *results) submitted() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	ids := make([]string, len(r.ids))
+	copy(ids, r.ids)
+
+	return ids
 }
 
 func main() {
@@ -96,6 +113,14 @@ func main() {
 	elapsed := time.Since(start)
 
 	report(res, elapsed)
+
+	if !opts.wait {
+		return
+	}
+
+	stats, missing, reason, drainedAfter := waitForDrain(client, opts, res.submitted())
+
+	reportDelivery(stats, missing, drainedAfter, reason)
 }
 
 func parseOptions() (options, error) {
@@ -105,15 +130,23 @@ func parseOptions() (options, error) {
 	keys := flag.Int("keys", 50, "number of distinct ordering keys")
 	concurrency := flag.Int("concurrency", 20, "number of concurrent submitters")
 	timeout := flag.Duration("timeout", 10*time.Second, "per-request timeout")
+	statsURL := flag.String("stats", "http://localhost:8080", "receiver base URL to read results from")
+	wait := flag.Bool("wait", true, "wait for delivery to drain and report receiver metrics")
+	drainQuiet := flag.Duration("drain-quiet", 20*time.Second, "stop waiting after this long with no new deliveries")
+	drainTimeout := flag.Duration("drain-timeout", 5*time.Minute, "stop waiting after this long regardless")
 
 	flag.Parse()
 
 	opts := options{
-		apiURL:      *apiURL,
-		events:      *events,
-		keys:        *keys,
-		concurrency: *concurrency,
-		timeout:     *timeout,
+		apiURL:       *apiURL,
+		statsURL:     strings.TrimSuffix(strings.TrimSpace(*statsURL), "/"),
+		events:       *events,
+		keys:         *keys,
+		concurrency:  *concurrency,
+		timeout:      *timeout,
+		wait:         *wait,
+		drainQuiet:   *drainQuiet,
+		drainTimeout: *drainTimeout,
 	}
 
 	for _, endpoint := range strings.Split(*endpoints, ",") {
@@ -211,6 +244,177 @@ func submit(client *http.Client, apiURL string, j job) (string, error) {
 	}
 
 	return created.ID, nil
+}
+
+// Submission finishing does not mean delivery has: events are still in the events topic, in
+// flight, or waiting out a backoff. The exit condition is that every id this run submitted has
+// arrived — a count comparison would be satisfied by leftovers from an earlier run, or by a
+// second tester, and would stop early. Dead-lettered events never arrive at all, so on a run
+// with permanent failures nothing can satisfy it; that is what the quiet period is for.
+func waitForDrain(client *http.Client, opts options, submitted []string) (receiver.Stats, []string, string, time.Duration) {
+	start := time.Now()
+	deadline := start.Add(opts.drainTimeout)
+	quietSince := start
+	last := -1
+
+	stats := receiver.Stats{}
+	missing := submitted
+
+	for {
+		// Ids first, then stats: the reported numbers must be at least as fresh as the
+		// decision made from them, or a fast run reports fewer deliveries than it waited for.
+		outstanding, idsErr := missingIDs(client, opts, submitted)
+		if idsErr != nil {
+			log.Printf("failed to read delivered ids: %v", idsErr)
+		} else {
+			missing = outstanding
+		}
+
+		fetched, statsErr := fetchStats(client, opts.statsURL)
+		if statsErr != nil {
+			log.Printf("failed to read receiver stats: %v", statsErr)
+		} else {
+			stats = fetched
+
+			if stats.Deliveries != last {
+				last = stats.Deliveries
+				quietSince = time.Now()
+			}
+		}
+
+		if idsErr == nil && statsErr == nil && len(missing) == 0 {
+			return stats, missing, "every submitted event arrived", time.Since(start)
+		}
+
+		if time.Since(quietSince) >= opts.drainQuiet {
+			return stats, missing, fmt.Sprintf("no new deliveries for %s", opts.drainQuiet), time.Since(start)
+		}
+
+		if time.Now().After(deadline) {
+			return stats, missing, fmt.Sprintf("gave up after %s", opts.drainTimeout), time.Since(start)
+		}
+
+		time.Sleep(drainPoll)
+	}
+}
+
+func missingIDs(client *http.Client, opts options, submitted []string) ([]string, error) {
+	arrived, err := fetchKeys(client, opts.statsURL)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool, len(arrived))
+	for _, id := range arrived {
+		seen[id] = true
+	}
+
+	missing := make([]string, 0)
+	for _, id := range submitted {
+		if !seen[id] {
+			missing = append(missing, id)
+		}
+	}
+
+	return missing, nil
+}
+
+func fetchStats(client *http.Client, statsURL string) (receiver.Stats, error) {
+	response := receiver.StatsResponse{}
+	if err := getJSON(client, statsURL+"/stats", &response); err != nil {
+		return receiver.Stats{}, err
+	}
+
+	return response.Stats, nil
+}
+
+func fetchKeys(client *http.Client, statsURL string) ([]string, error) {
+	keys := []string{}
+	if err := getJSON(client, statsURL+"/keys", &keys); err != nil {
+		return nil, err
+	}
+
+	return keys, nil
+}
+
+func getJSON(client *http.Client, url string, into any) error {
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status %d from %s", resp.StatusCode, url)
+	}
+
+	return json.NewDecoder(resp.Body).Decode(into)
+}
+
+func reportDelivery(stats receiver.Stats, missing []string, drainedAfter time.Duration, reason string) {
+	fmt.Printf("\ndrained after    %s  (%s)\n", drainedAfter.Round(time.Millisecond), reason)
+	fmt.Printf("delivered        %d  (unique %d, duplicates %d)\n", stats.Deliveries, stats.UniqueEvents, stats.Duplicates)
+
+	fmt.Printf("unaccounted      %d", len(missing))
+	if len(missing) > 0 {
+		fmt.Printf("  %s  (cross-check against dead-letter depth)", sample(missing, 5))
+	}
+	fmt.Println()
+
+	fmt.Printf("\nfirst-attempt    %s\n", latency(stats.FirstAttempt))
+	fmt.Printf("retried          %s\n", latency(stats.Retried))
+	fmt.Printf("peak delivery    %d/s\n", peak(stats.Throughput))
+
+	fmt.Printf("\nordering         %d inversions across %d keys\n", stats.Inversions, stats.OrderingKeys)
+	fmt.Printf("per host         %s\n", perHost(stats.ByAddr))
+}
+
+func latency(l receiver.Latency) string {
+	if l.Count == 0 {
+		return "no samples"
+	}
+
+	return fmt.Sprintf(
+		"n=%-6d p50 %.1fms  p95 %.1fms  p99 %.1fms  max %.1fms",
+		l.Count, l.P50Ms, l.P95Ms, l.P99Ms, l.MaxMs,
+	)
+}
+
+func peak(buckets []receiver.Bucket) int {
+	highest := 0
+	for _, bucket := range buckets {
+		if bucket.Count > highest {
+			highest = bucket.Count
+		}
+	}
+
+	return highest
+}
+
+func perHost(byAddr map[string]receiver.AddrStats) string {
+	addrs := make([]string, 0, len(byAddr))
+	for addr := range byAddr {
+		addrs = append(addrs, addr)
+	}
+	sort.Strings(addrs)
+
+	parts := make([]string, 0, len(addrs))
+	for _, addr := range addrs {
+		parts = append(parts, fmt.Sprintf("%s=%d", addr, byAddr[addr].Deliveries))
+	}
+
+	return strings.Join(parts, "  ")
+}
+
+func sample(ids []string, limit int) string {
+	if len(ids) > limit {
+		return strings.Join(ids[:limit], " ") + " ..."
+	}
+
+	return strings.Join(ids, " ")
 }
 
 func report(res *results, elapsed time.Duration) {
