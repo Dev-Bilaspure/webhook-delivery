@@ -60,11 +60,14 @@ func (s *Server) deliver(w http.ResponseWriter, r *http.Request) {
 	p := Payload{}
 	_ = json.Unmarshal(body, &p)
 
+	outcome := s.inj.Next()
+
 	sample := Sample{
 		Key:         r.Header.Get("Idempotency-Key"),
 		OrderingKey: p.OrderingKey,
 		Seq:         p.Seq,
 		Addr:        s.addr,
+		Status:      outcome.Status,
 		ArrivedAt:   time.Now(),
 	}
 	if !p.SentAt.IsZero() {
@@ -72,8 +75,6 @@ func (s *Server) deliver(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.store.Record(sample)
-
-	outcome := s.inj.Next()
 
 	if outcome.Delay > 0 {
 		timer := time.NewTimer(outcome.Delay)

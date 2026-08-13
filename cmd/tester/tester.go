@@ -356,7 +356,9 @@ func getJSON(client *http.Client, url string, into any) error {
 
 func reportDelivery(stats receiver.Stats, missing []string, drainedAfter time.Duration, reason string) {
 	fmt.Printf("\ndrained after    %s  (%s)\n", drainedAfter.Round(time.Millisecond), reason)
-	fmt.Printf("delivered        %d  (unique %d, duplicates %d)\n", stats.Deliveries, stats.UniqueEvents, stats.Duplicates)
+	fmt.Printf("arrived          %d  (unique %d, duplicates %d)\n", stats.Deliveries, stats.UniqueEvents, stats.Duplicates)
+	fmt.Printf("  accepted       %d\n", stats.Accepted)
+	fmt.Printf("  refused        %d\n", stats.Rejected)
 
 	fmt.Printf("unaccounted      %d", len(missing))
 	if len(missing) > 0 {

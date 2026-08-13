@@ -12,6 +12,7 @@ type Sample struct {
 	OrderingKey  string
 	Seq          int
 	Addr         string
+	Status       int
 	ArrivedAt    time.Time
 	Latency      time.Duration
 	FirstAttempt bool
@@ -43,6 +44,8 @@ type AddrStats struct {
 
 type Stats struct {
 	Deliveries   int                  `json:"deliveries"`
+	Accepted     int                  `json:"accepted"`
+	Rejected     int                  `json:"rejected"`
 	UniqueEvents int                  `json:"uniqueEvents"`
 	Duplicates   int                  `json:"duplicates"`
 	FirstAttempt Latency              `json:"firstAttempt"`
@@ -114,6 +117,12 @@ func (s *Store) Stats() Stats {
 	byAddr := make(map[string][]Sample)
 
 	for _, sample := range samples {
+		if sample.Status >= 200 && sample.Status < 300 {
+			stats.Accepted++
+		} else {
+			stats.Rejected++
+		}
+
 		if sample.Latency > 0 {
 			if sample.FirstAttempt {
 				first = append(first, sample.Latency)
