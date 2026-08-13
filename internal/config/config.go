@@ -30,6 +30,7 @@ type Config struct {
 
 	RetryCountLimit int
 	BaseBackoff     time.Duration
+	MaxEventAge     time.Duration
 
 	BreakerFailureThreshold int
 	BreakerCooldown         time.Duration
@@ -62,6 +63,7 @@ func Load() Config {
 
 		RetryCountLimit: envInt("RETRY_COUNT_LIMIT", 5),
 		BaseBackoff:     envDuration("BASE_BACKOFF", 1*time.Second),
+		MaxEventAge:     envDuration("MAX_EVENT_AGE", 1*time.Hour),
 
 		BreakerFailureThreshold: envInt("BREAKER_FAILURE_THRESHOLD", 5),
 		BreakerCooldown:         envDuration("BREAKER_COOLDOWN", 45*time.Second),

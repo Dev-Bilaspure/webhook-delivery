@@ -125,6 +125,20 @@ func (w *Worker) deliverGroup(
 			continue
 		}
 
+		// Before the retry wait and before the breaker: an expired event must not sleep out a
+		// cooldown first, and giving up is our decision, so no host is blamed for it.
+		if age, expired := w.expired(retryEvent.Event); expired {
+			if err := w.sendToDLQ(ctx, &msg); err != nil {
+				return err
+			}
+			log.Printf(
+				"message %s expired after %s; moved to dead-letter queue",
+				retryEvent.Event.ID,
+				age.Round(time.Second),
+			)
+			continue
+		}
+
 		if w.workerType == RetryWorker {
 			if err := waitUntil(ctx, retryEvent.NextRetryAt); err != nil {
 				return err
@@ -344,6 +358,18 @@ func (w *Worker) handleFailure(ctx context.Context, key string, retryEvent *even
 	)
 
 	return nil
+}
+
+// A zero CreatedAt means the age is unknown, not that the event is 2000 years old. A
+// non-positive MaxEventAge disables the limit.
+func (w *Worker) expired(e event.Event) (time.Duration, bool) {
+	if w.cfg.MaxEventAge <= 0 || e.CreatedAt.IsZero() {
+		return 0, false
+	}
+
+	age := time.Since(e.CreatedAt)
+
+	return age, age > w.cfg.MaxEventAge
 }
 
 func (w *Worker) getNextRetryAt(retryCount int) time.Time {
