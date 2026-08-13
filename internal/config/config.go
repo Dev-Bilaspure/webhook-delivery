@@ -11,9 +11,9 @@ import (
 type Config struct {
 	KafkaBrokers []string
 
-	APIAddr      string
-	ReceiverAddr string
-	MetricsAddr  string
+	APIAddr       string
+	ReceiverAddrs []string
+	MetricsAddr   string
 
 	EventsTopic   string
 	RetriesTopic  string
@@ -41,9 +41,9 @@ func Load() Config {
 	return Config{
 		KafkaBrokers: envSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
 
-		APIAddr:      env("API_ADDR", ":8000"),
-		ReceiverAddr: env("RECEIVER_ADDR", ":8080"),
-		MetricsAddr:  env("METRICS_ADDR", ":9100"),
+		APIAddr:       env("API_ADDR", ":8000"),
+		ReceiverAddrs: envSlice("RECEIVER_ADDRS", []string{":8080", ":8081", ":8082"}),
+		MetricsAddr:   env("METRICS_ADDR", ":9100"),
 
 		EventsTopic:   env("EVENTS_TOPIC", "events"),
 		RetriesTopic:  env("RETRIES_TOPIC", "retries"),

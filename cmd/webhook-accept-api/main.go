@@ -1,69 +1,47 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/config"
-	"github.com/dev-bilaspure/webhook-delivery/internal/httpapi"
+	"github.com/dev-bilaspure/webhook-delivery/internal/receiver"
 )
 
 func main() {
 	cfg := config.Load()
 
-	mux := http.NewServeMux()
+	store := receiver.NewStore()
+	servers := make([]*http.Server, 0, len(cfg.ReceiverAddrs))
 
-	eventKeyStore := make(map[string]bool)
-	dedupedStore := make(map[string]bool)
-	var mu sync.RWMutex
-
-	mux.HandleFunc("POST /webhook/{id}", func(w http.ResponseWriter, r *http.Request) {
-		idempotency := r.Header.Get("Idempotency-Key")
-
-		mu.Lock()
-		_, exists := eventKeyStore[idempotency]
-		if exists {
-			dedupedStore[idempotency] = true
-		} else {
-			eventKeyStore[idempotency] = true
-		}
-		mu.Unlock()
-
-		if err := httpapi.WriteJSON(w, http.StatusOK, map[string]bool{"success": true}); err != nil {
-			log.Printf("failed to encode response: %v", err.Error())
-		}
-	})
-
-	mux.HandleFunc("GET /store", func(w http.ResponseWriter, r *http.Request) {
-		mu.RLock()
-		eventKeyStoreSnapshot := make(map[string]bool, len(eventKeyStore))
-		for k, v := range eventKeyStore {
-			eventKeyStoreSnapshot[k] = v
-		}
-
-		dedupedStoreSnapshot := make(map[string]bool, len(dedupedStore))
-		for k, v := range dedupedStore {
-			dedupedStoreSnapshot[k] = v
-		}
-		mu.RUnlock()
-
-		if err := httpapi.WriteJSON(w, http.StatusOK, map[string]any{
-			"eventKeyStore": eventKeyStoreSnapshot,
-			"dedupedStore":  dedupedStoreSnapshot,
-		}); err != nil {
-			log.Printf("failed to encode response: %v", err.Error())
-		}
-	})
-
-	server := &http.Server{
-		Addr:    cfg.ReceiverAddr,
-		Handler: mux,
+	for _, addr := range cfg.ReceiverAddrs {
+		servers = append(servers, &http.Server{
+			Addr:    addr,
+			Handler: receiver.NewServer(store, addr).Handler(),
+			// No read/write/idle timeouts: hang mode must outlive the worker's delivery
+			// timeout, and idle connections must survive so the worker's pool is what
+			// gets measured.
+			ReadHeaderTimeout: 5 * time.Second,
+		})
 	}
 
-	log.Printf("Server listening on %s", server.Addr)
+	wg := sync.WaitGroup{}
 
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server error: %v", err)
+	for _, server := range servers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			log.Printf("receiver listening on %s", server.Addr)
+
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("server error on %s: %v", server.Addr, err)
+			}
+		}()
 	}
+
+	wg.Wait()
 }
