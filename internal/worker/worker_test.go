@@ -75,6 +75,24 @@ func testMessageTo(t *testing.T, key, id, endpointURL string, nextRetryAt time.T
 	return kafkago.Message{Key: []byte(key), Value: value}
 }
 
+func testMessageCreatedAt(t *testing.T, key, id, endpointURL string, createdAt time.Time) kafkago.Message {
+	t.Helper()
+
+	value, err := json.Marshal(event.RetryEvent{
+		Event: event.Event{
+			ID:          id,
+			EndpointURL: endpointURL,
+			CreatedAt:   createdAt,
+		},
+		NextRetryAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("failed to marshal retry event: %v", err)
+	}
+
+	return kafkago.Message{Key: []byte(key), Value: value}
+}
+
 func testMessage(t *testing.T, key string, nextRetryAt time.Time) kafkago.Message {
 	t.Helper()
 
@@ -271,6 +289,155 @@ func TestDeliverGroupKeepsRetryBudgetWhenBreakerIsOpen(t *testing.T) {
 
 	if len(dlqProducer.messages) != 0 {
 		t.Fatalf("dead-lettered %d messages, want 0", len(dlqProducer.messages))
+	}
+}
+
+func TestDeliverGroupDeadLettersExpiredEvents(t *testing.T) {
+	tests := []struct {
+		name          string
+		createdAt     time.Time
+		maxEventAge   time.Duration
+		wantDelivered bool
+	}{
+		{
+			name:          "older than the limit",
+			createdAt:     time.Now().Add(-2 * time.Hour),
+			maxEventAge:   time.Hour,
+			wantDelivered: false,
+		},
+		{
+			name:          "within the limit",
+			createdAt:     time.Now().Add(-time.Minute),
+			maxEventAge:   time.Hour,
+			wantDelivered: true,
+		},
+		{
+			name:          "no createdAt is an unknown age, not an ancient one",
+			createdAt:     time.Time{},
+			maxEventAge:   time.Hour,
+			wantDelivered: true,
+		},
+		{
+			name:          "a non-positive limit disables expiry",
+			createdAt:     time.Now().Add(-100 * time.Hour),
+			maxEventAge:   0,
+			wantDelivered: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var received int
+
+			endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				received++
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer endpoint.Close()
+
+			cfg := testConfig()
+			cfg.MaxEventAge = tt.maxEventAge
+
+			retryProducer := &recordingPublisher{}
+			dlqProducer := &recordingPublisher{}
+
+			w := &Worker{
+				deliverer:     delivery.NewDeliverer(time.Second),
+				retryProducer: retryProducer,
+				dlqProducer:   dlqProducer,
+				workerType:    DeliveryWorker,
+				cfg:           cfg,
+			}
+
+			msgs := []kafkago.Message{
+				testMessageCreatedAt(t, "key-1", "event-1", endpoint.URL, tt.createdAt),
+			}
+
+			err := w.deliverGroup(
+				context.Background(),
+				msgs,
+				map[string]chan struct{}{},
+				&sync.Mutex{},
+				make(chan struct{}, cfg.MaxConcurrency),
+				map[string]*breaker.Breaker{},
+			)
+			if err != nil {
+				t.Fatalf("deliverGroup returned %v, want nil", err)
+			}
+
+			wantReceived, wantDeadLettered := 0, 1
+			if tt.wantDelivered {
+				wantReceived, wantDeadLettered = 1, 0
+			}
+
+			if received != wantReceived {
+				t.Fatalf("endpoint received %d requests, want %d", received, wantReceived)
+			}
+			if len(dlqProducer.messages) != wantDeadLettered {
+				t.Fatalf("dead-lettered %d messages, want %d", len(dlqProducer.messages), wantDeadLettered)
+			}
+			if len(retryProducer.messages) != 0 {
+				t.Fatalf("published %d messages to retries, want 0; expiry is terminal", len(retryProducer.messages))
+			}
+		})
+	}
+}
+
+func TestExpiryDoesNotTripTheBreakerOrStallTheGroup(t *testing.T) {
+	var received []string
+
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = append(received, r.Header.Get("Idempotency-Key"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer endpoint.Close()
+
+	cfg := testConfig()
+	cfg.MaxEventAge = time.Hour
+	cfg.BreakerFailureThreshold = 1
+
+	retryProducer := &recordingPublisher{}
+	dlqProducer := &recordingPublisher{}
+
+	w := &Worker{
+		deliverer:     delivery.NewDeliverer(time.Second),
+		retryProducer: retryProducer,
+		dlqProducer:   dlqProducer,
+		workerType:    DeliveryWorker,
+		cfg:           cfg,
+	}
+
+	stale := time.Now().Add(-2 * time.Hour)
+	fresh := time.Now()
+
+	msgs := []kafkago.Message{
+		testMessageCreatedAt(t, "key-1", "event-1", endpoint.URL, stale),
+		testMessageCreatedAt(t, "key-1", "event-2", endpoint.URL, stale),
+		testMessageCreatedAt(t, "key-1", "event-3", endpoint.URL, fresh),
+	}
+
+	err := w.deliverGroup(
+		context.Background(),
+		msgs,
+		map[string]chan struct{}{},
+		&sync.Mutex{},
+		make(chan struct{}, cfg.MaxConcurrency),
+		map[string]*breaker.Breaker{},
+	)
+	if err != nil {
+		t.Fatalf("deliverGroup returned %v, want nil", err)
+	}
+
+	if len(received) != 1 || received[0] != "event-3" {
+		t.Fatalf("endpoint received %v, want only event-3; the group must continue past expired events", received)
+	}
+
+	if len(dlqProducer.messages) != 2 {
+		t.Fatalf("dead-lettered %d messages, want 2", len(dlqProducer.messages))
+	}
+
+	if len(retryProducer.messages) != 0 {
+		t.Fatalf("published %d messages to retries, want 0; expiry must not count against the host's breaker", len(retryProducer.messages))
 	}
 }
 
