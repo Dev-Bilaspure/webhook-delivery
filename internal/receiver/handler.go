@@ -43,7 +43,7 @@ type Payload struct {
 	SentAt      time.Time `json:"sentAt"`
 }
 
-type statsResponse struct {
+type StatsResponse struct {
 	Addr  string `json:"addr"`
 	Mode  Mode   `json:"mode"`
 	Stats Stats  `json:"stats"`
@@ -114,7 +114,7 @@ func (s *Server) control(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
-	response := statsResponse{
+	response := StatsResponse{
 		Addr:  s.addr,
 		Mode:  s.inj.Mode(),
 		Stats: s.store.Stats(),

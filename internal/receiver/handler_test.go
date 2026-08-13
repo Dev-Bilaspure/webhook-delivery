@@ -243,7 +243,7 @@ func TestStatsReportsAddressAndMode(t *testing.T) {
 		t.Fatalf("stats status = %d, want %d", rec.Code, http.StatusOK)
 	}
 
-	response := statsResponse{}
+	response := StatsResponse{}
 	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
 		t.Fatalf("failed to decode stats: %v", err)
 	}
