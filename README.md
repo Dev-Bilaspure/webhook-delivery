@@ -36,7 +36,7 @@ the Docker network:
 
 ```sh
 curl -sXPOST localhost:8000/events \
-  -d '{"endpointURL":"http://webhook-accept-api:8080/webhook/demo","payload":{"hello":"world"}}'
+  -d '{"endpointURL":"http://receiver:8080/webhook/demo","payload":{"hello":"world"}}'
 curl -s localhost:8080/store
 ```
 
@@ -65,7 +65,7 @@ cmd/
   api/                 HTTP API (accepts events)
   worker/              delivery worker
   retry-worker/        retry worker
-  webhook-accept-api/  test receiver (counts deliveries, detects duplicates)
+  receiver/            test receiver (counts deliveries, detects duplicates)
   tester/              load generator
 internal/
   config/              env-var config

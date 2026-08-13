@@ -84,11 +84,11 @@ services:
       KAFKA_BROKERS: kafka:29092
     restart: unless-stopped
 
-  webhook-accept-api:
+  receiver:
     build:
       context: .
       args:
-        SERVICE: webhook-accept-api
+        SERVICE: receiver
     environment:
       RECEIVER_ADDR: ":8080"
     ports:

@@ -59,7 +59,7 @@ run-retry-worker:
 ## run-receiver: run the test receiver locally
 .PHONY: run-receiver
 run-receiver:
-	go run ./cmd/webhook-accept-api
+	go run ./cmd/receiver
 
 ## tester: fire load at the local API
 .PHONY: tester

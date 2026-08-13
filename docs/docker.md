@@ -18,7 +18,7 @@ One binary per image, chosen by `SERVICE`:
 docker build --build-arg SERVICE=api                -t webhook/api .
 docker build --build-arg SERVICE=worker             -t webhook/worker .
 docker build --build-arg SERVICE=retry-worker       -t webhook/retry-worker .
-docker build --build-arg SERVICE=webhook-accept-api -t webhook/receiver .
+docker build --build-arg SERVICE=receiver -t webhook/receiver .
 ```
 
 ## Run
@@ -35,7 +35,7 @@ Then (network is usually `go-proj_default` — check `docker network ls`):
 docker run -d --name api --network go-proj_default \
   -e KAFKA_BROKERS=kafka:29092 -p 8000:8000 webhook/api
 
-docker run -d --name webhook-accept-api --network go-proj_default \
+docker run -d --name receiver --network go-proj_default \
   -e RECEIVER_ADDR=:8080 -p 8080:8080 webhook/receiver
 
 docker run -d --name worker-1 --network go-proj_default -e KAFKA_BROKERS=kafka:29092 webhook/worker
@@ -48,13 +48,13 @@ Send an event (endpoint host is the receiver's container name — delivery happe
 
 ```sh
 curl -sXPOST localhost:8000/events \
-  -d '{"endpointURL":"http://webhook-accept-api:8080/webhook/demo","payload":{"hi":1}}'
+  -d '{"endpointURL":"http://receiver:8080/webhook/demo","payload":{"hi":1}}'
 curl -s localhost:8080/store
 ```
 
 Clean up:
 
 ```sh
-docker rm -f api webhook-accept-api worker-1 worker-2 worker-3 retry-worker
+docker rm -f api receiver worker-1 worker-2 worker-3 retry-worker
 docker compose down
 ```
