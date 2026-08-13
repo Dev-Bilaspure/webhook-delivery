@@ -103,6 +103,59 @@ func TestFirstAttemptIsSeparatedFromRetries(t *testing.T) {
 	}
 }
 
+func TestThroughputBuckets(t *testing.T) {
+	s := NewStore()
+
+	offsets := []time.Duration{
+		100 * time.Millisecond,
+		400 * time.Millisecond,
+		1200 * time.Millisecond,
+		2900 * time.Millisecond,
+		2950 * time.Millisecond,
+	}
+
+	for n, offset := range offsets {
+		s.Record(Sample{
+			Key:       fmt.Sprintf("event-%d", n),
+			Addr:      ":8080",
+			ArrivedAt: base.Add(offset),
+		})
+	}
+
+	want := []Bucket{{Second: 0, Count: 2}, {Second: 1, Count: 1}, {Second: 2, Count: 2}}
+	got := s.Stats().Throughput
+
+	if len(got) != len(want) {
+		t.Fatalf("throughput = %+v, want %+v", got, want)
+	}
+	for n := range want {
+		if got[n] != want[n] {
+			t.Fatalf("throughput = %+v, want %+v", got, want)
+		}
+	}
+}
+
+func TestPerAddressCounts(t *testing.T) {
+	s := NewStore()
+
+	addrs := []string{":8080", ":8080", ":8080", ":8081", ":8082", ":8082"}
+	for n, addr := range addrs {
+		s.Record(Sample{
+			Key:       fmt.Sprintf("event-%d", n),
+			Addr:      addr,
+			ArrivedAt: base.Add(time.Duration(n) * time.Millisecond),
+		})
+	}
+
+	byAddr := s.Stats().ByAddr
+
+	for addr, want := range map[string]int{":8080": 3, ":8081": 1, ":8082": 2} {
+		if got := byAddr[addr].Deliveries; got != want {
+			t.Fatalf("byAddr[%s] = %d, want %d", addr, got, want)
+		}
+	}
+}
+
 func TestInversions(t *testing.T) {
 	tests := []struct {
 		name  string
