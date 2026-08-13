@@ -37,7 +37,7 @@ func (s *Server) Handler() http.Handler {
 	return mux
 }
 
-type payload struct {
+type Payload struct {
 	OrderingKey string    `json:"orderingKey"`
 	Seq         int       `json:"seq"`
 	SentAt      time.Time `json:"sentAt"`
@@ -57,7 +57,7 @@ func (s *Server) deliver(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Best effort: a hand-rolled body without these fields is still a delivery worth recording.
-	p := payload{}
+	p := Payload{}
 	_ = json.Unmarshal(body, &p)
 
 	sample := Sample{

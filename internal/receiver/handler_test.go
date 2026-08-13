@@ -43,7 +43,7 @@ func do(handler http.Handler, req *http.Request) *httptest.ResponseRecorder {
 func TestControlChangesDeliveryBehaviour(t *testing.T) {
 	srv, handler := newTestServer()
 
-	if got := do(handler, webhookRequest(t, "event-1", payload{})).Code; got != http.StatusOK {
+	if got := do(handler, webhookRequest(t, "event-1", Payload{})).Code; got != http.StatusOK {
 		t.Fatalf("status = %d, want %d before any fault is set", got, http.StatusOK)
 	}
 
@@ -51,7 +51,7 @@ func TestControlChangesDeliveryBehaviour(t *testing.T) {
 		t.Fatalf("control status = %d, want %d", got, http.StatusOK)
 	}
 
-	if got := do(handler, webhookRequest(t, "event-2", payload{})).Code; got != http.StatusInternalServerError {
+	if got := do(handler, webhookRequest(t, "event-2", Payload{})).Code; got != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d after the fault is set", got, http.StatusInternalServerError)
 	}
 
@@ -59,7 +59,7 @@ func TestControlChangesDeliveryBehaviour(t *testing.T) {
 		t.Fatalf("control status = %d, want %d", got, http.StatusOK)
 	}
 
-	if got := do(handler, webhookRequest(t, "event-3", payload{})).Code; got != http.StatusOK {
+	if got := do(handler, webhookRequest(t, "event-3", Payload{})).Code; got != http.StatusOK {
 		t.Fatalf("status = %d, want %d after recovering", got, http.StatusOK)
 	}
 
@@ -92,7 +92,7 @@ func TestControlRejectsBadRequestsWithoutChangingTheFault(t *testing.T) {
 				t.Fatalf("mode = %v, want %v; a rejected fault must not be applied", got, ModeOK)
 			}
 
-			if got := do(handler, webhookRequest(t, "event-1", payload{})).Code; got != http.StatusOK {
+			if got := do(handler, webhookRequest(t, "event-1", Payload{})).Code; got != http.StatusOK {
 				t.Fatalf("status = %d, want %d; deliveries must be unaffected", got, http.StatusOK)
 			}
 		})
@@ -103,7 +103,7 @@ func TestDeliverRecordsThePayloadMetadata(t *testing.T) {
 	srv, handler := newTestServer()
 
 	sent := time.Now().Add(-500 * time.Millisecond)
-	body := payload{OrderingKey: "cust-7", Seq: 42, SentAt: sent}
+	body := Payload{OrderingKey: "cust-7", Seq: 42, SentAt: sent}
 
 	if got := do(handler, webhookRequest(t, "event-1", body)).Code; got != http.StatusOK {
 		t.Fatalf("status = %d, want %d", got, http.StatusOK)
@@ -170,7 +170,7 @@ func TestHangReturnsWhenTheClientDisconnects(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	req := webhookRequest(t, "event-1", payload{}).WithContext(ctx)
+	req := webhookRequest(t, "event-1", Payload{}).WithContext(ctx)
 
 	start := time.Now()
 	do(handler, req)
@@ -188,7 +188,7 @@ func TestResetClearsSamplesButKeepsTheFault(t *testing.T) {
 		t.Fatalf("control status = %d, want %d", got, http.StatusOK)
 	}
 
-	do(handler, webhookRequest(t, "event-1", payload{}))
+	do(handler, webhookRequest(t, "event-1", Payload{}))
 
 	if got := do(handler, httptest.NewRequest(http.MethodPost, "/reset", nil)).Code; got != http.StatusNoContent {
 		t.Fatalf("reset status = %d, want %d", got, http.StatusNoContent)
@@ -198,7 +198,7 @@ func TestResetClearsSamplesButKeepsTheFault(t *testing.T) {
 		t.Fatalf("deliveries = %d, want 0 after reset", got)
 	}
 
-	if got := do(handler, webhookRequest(t, "event-2", payload{})).Code; got != http.StatusInternalServerError {
+	if got := do(handler, webhookRequest(t, "event-2", Payload{})).Code; got != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d; reset clears samples, not the configured fault", got, http.StatusInternalServerError)
 	}
 }
@@ -207,7 +207,7 @@ func TestKeysListsEveryRecordedEvent(t *testing.T) {
 	_, handler := newTestServer()
 
 	for _, key := range []string{"event-2", "event-1", "event-2"} {
-		do(handler, webhookRequest(t, key, payload{}))
+		do(handler, webhookRequest(t, key, Payload{}))
 	}
 
 	rec := do(handler, httptest.NewRequest(http.MethodGet, "/keys", nil))
