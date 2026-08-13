@@ -28,6 +28,9 @@ go.work.sum
 # env file
 .env
 
+# local notes, never committed
+*.local.md
+
 # Editor/IDE
 # .idea/
 # .vscode/
