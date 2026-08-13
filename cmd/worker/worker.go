@@ -22,8 +22,8 @@ func main() {
 	consumer := kafka.NewConsumer(cfg.KafkaBrokers, cfg.EventsTopic, cfg.DeliveryGroup)
 	defer consumer.Close()
 
-	retryProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.RetriesTopic)
-	dlqProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.DLQTopic)
+	retryProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.RetriesTopic, cfg.ProducerBatchTimeout)
+	dlqProducer := kafka.NewProducer(cfg.KafkaBrokers, cfg.DLQTopic, cfg.ProducerBatchTimeout)
 
 	deliveryWorker := worker.NewWorker(
 		consumer,

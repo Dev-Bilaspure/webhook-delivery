@@ -20,10 +20,7 @@ func main() {
 
 	cfg := config.Load()
 
-	producer := kafka.NewProducer(
-		cfg.KafkaBrokers,
-		cfg.EventsTopic,
-	)
+	producer := kafka.NewProducer(cfg.KafkaBrokers, cfg.EventsTopic, cfg.ProducerBatchTimeout)
 
 	apiServer := httpapi.NewServer(producer)
 

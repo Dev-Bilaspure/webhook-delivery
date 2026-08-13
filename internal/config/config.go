@@ -26,6 +26,8 @@ type Config struct {
 	MaxConcurrency        int
 	MaxConcurrencyPerHost int
 
+	ProducerBatchTimeout time.Duration
+
 	RetryCountLimit int
 	BaseBackoff     time.Duration
 
@@ -55,6 +57,8 @@ func Load() Config {
 		BatchFillTimeout:      envDuration("BATCH_FILL_TIMEOUT", 200*time.Millisecond),
 		MaxConcurrency:        envInt("MAX_CONCURRENCY", 10),
 		MaxConcurrencyPerHost: envInt("MAX_CONCURRENCY_PER_HOST", 5),
+
+		ProducerBatchTimeout: envDuration("PRODUCER_BATCH_TIMEOUT", 10*time.Millisecond),
 
 		RetryCountLimit: envInt("RETRY_COUNT_LIMIT", 5),
 		BaseBackoff:     envDuration("BASE_BACKOFF", 1*time.Second),

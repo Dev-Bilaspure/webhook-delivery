@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -23,12 +24,13 @@ func (p *Producer) Close() error {
 	return p.writer.Close()
 }
 
-func NewProducer(brokers []string, topic string) *Producer {
+func NewProducer(brokers []string, topic string, batchTimeout time.Duration) *Producer {
 	writer := kafka.Writer{
 		Addr:         kafka.TCP(brokers...),
 		Topic:        topic,
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireAll,
+		BatchTimeout: batchTimeout,
 	}
 
 	p := Producer{
