@@ -27,7 +27,7 @@ func main() {
 
 	retryWorker := worker.NewWorker(
 		consumer,
-		delivery.NewDeliverer(cfg.DeliveryTimeout),
+		delivery.NewDeliverer(cfg.DeliveryTimeout, cfg.MaxIdleConns, cfg.MaxIdleConnsPerHost),
 		retryProducer,
 		dlqProducer,
 		worker.RetryWorker,

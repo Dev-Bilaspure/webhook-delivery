@@ -26,6 +26,9 @@ type Config struct {
 	MaxConcurrency        int
 	MaxConcurrencyPerHost int
 
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
+
 	ProducerBatchTimeout time.Duration
 
 	RetryCountLimit int
@@ -41,7 +44,7 @@ type Config struct {
 }
 
 func Load() Config {
-	return Config{
+	cfg := Config{
 		KafkaBrokers: envSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
 
 		APIAddr:       env("API_ADDR", ":8000"),
@@ -72,6 +75,11 @@ func Load() Config {
 
 		LogLevel: env("LOG_LEVEL", "info"),
 	}
+
+	cfg.MaxIdleConns = envInt("MAX_IDLE_CONNS", cfg.MaxConcurrency)
+	cfg.MaxIdleConnsPerHost = envInt("MAX_IDLE_CONNS_PER_HOST", cfg.MaxConcurrencyPerHost)
+
+	return cfg
 }
 
 func env(key, def string) string {

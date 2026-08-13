@@ -111,7 +111,7 @@ func TestDeliverGroupDefersQueuedMessagesAfterAFailure(t *testing.T) {
 	retryProducer := &recordingPublisher{}
 
 	w := &Worker{
-		deliverer:     delivery.NewDeliverer(time.Second),
+		deliverer:     delivery.NewDeliverer(time.Second, 10, 5),
 		retryProducer: retryProducer,
 		dlqProducer:   &recordingPublisher{},
 		workerType:    DeliveryWorker,
@@ -180,7 +180,7 @@ func TestDeliverGroupDeadLettersPermanentRejections(t *testing.T) {
 	cfg.BreakerFailureThreshold = 1
 
 	w := &Worker{
-		deliverer:     delivery.NewDeliverer(time.Second),
+		deliverer:     delivery.NewDeliverer(time.Second, 10, 5),
 		retryProducer: retryProducer,
 		dlqProducer:   dlqProducer,
 		workerType:    DeliveryWorker,
@@ -243,7 +243,7 @@ func TestDeliverGroupKeepsRetryBudgetWhenBreakerIsOpen(t *testing.T) {
 	dlqProducer := &recordingPublisher{}
 
 	w := &Worker{
-		deliverer:     delivery.NewDeliverer(time.Second),
+		deliverer:     delivery.NewDeliverer(time.Second, 10, 5),
 		retryProducer: retryProducer,
 		dlqProducer:   dlqProducer,
 		workerType:    DeliveryWorker,
@@ -342,7 +342,7 @@ func TestDeliverGroupDeadLettersExpiredEvents(t *testing.T) {
 			dlqProducer := &recordingPublisher{}
 
 			w := &Worker{
-				deliverer:     delivery.NewDeliverer(time.Second),
+				deliverer:     delivery.NewDeliverer(time.Second, 10, 5),
 				retryProducer: retryProducer,
 				dlqProducer:   dlqProducer,
 				workerType:    DeliveryWorker,
@@ -400,7 +400,7 @@ func TestExpiryDoesNotTripTheBreakerOrStallTheGroup(t *testing.T) {
 	dlqProducer := &recordingPublisher{}
 
 	w := &Worker{
-		deliverer:     delivery.NewDeliverer(time.Second),
+		deliverer:     delivery.NewDeliverer(time.Second, 10, 5),
 		retryProducer: retryProducer,
 		dlqProducer:   dlqProducer,
 		workerType:    DeliveryWorker,

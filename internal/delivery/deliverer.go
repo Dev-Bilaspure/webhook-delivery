@@ -38,10 +38,16 @@ type Deliverer struct {
 	client *http.Client
 }
 
-func NewDeliverer(timeout time.Duration) *Deliverer {
+func NewDeliverer(timeout time.Duration, maxIdleConns, maxIdleConnsPerHost int) *Deliverer {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.MaxIdleConns = maxIdleConns
+	transport.MaxIdleConnsPerHost = maxIdleConnsPerHost
+
 	client := http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: transport,
 	}
+
 	return &Deliverer{
 		client: &client,
 	}
