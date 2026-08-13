@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/dev-bilaspure/webhook-delivery/internal/config"
@@ -12,6 +16,9 @@ import (
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	cfg := config.Load()
 
 	store := receiver.NewStore()
@@ -28,13 +35,8 @@ func main() {
 		})
 	}
 
-	wg := sync.WaitGroup{}
-
 	for _, server := range servers {
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
-
 			log.Printf("receiver listening on %s", server.Addr)
 
 			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -43,5 +45,26 @@ func main() {
 		}()
 	}
 
+	<-ctx.Done()
+	log.Println("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	wg := sync.WaitGroup{}
+
+	for _, server := range servers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				log.Printf("graceful shutdown timed out on %s: %v", server.Addr, err)
+			}
+		}()
+	}
+
 	wg.Wait()
+
+	log.Println("receiver shut down cleanly")
 }
