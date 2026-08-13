@@ -135,6 +135,39 @@ func TestDeliverRecordsThePayloadMetadata(t *testing.T) {
 	}
 }
 
+func TestDeliverRecordsTheStatusItReturned(t *testing.T) {
+	srv, handler := newTestServer()
+
+	if got := do(handler, webhookRequest(t, "event-1", Payload{})).Code; got != http.StatusOK {
+		t.Fatalf("status = %d, want %d", got, http.StatusOK)
+	}
+
+	if got := do(handler, controlRequest(`{"mode":"status","status":400}`)).Code; got != http.StatusOK {
+		t.Fatalf("control status = %d, want %d", got, http.StatusOK)
+	}
+
+	if got := do(handler, webhookRequest(t, "event-2", Payload{})).Code; got != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", got, http.StatusBadRequest)
+	}
+
+	if len(srv.store.samples) != 2 {
+		t.Fatalf("recorded %d samples, want 2", len(srv.store.samples))
+	}
+
+	if got := srv.store.samples[0].Status; got != http.StatusOK {
+		t.Fatalf("samples[0].Status = %d, want %d", got, http.StatusOK)
+	}
+	if got := srv.store.samples[1].Status; got != http.StatusBadRequest {
+		t.Fatalf("samples[1].Status = %d, want %d", got, http.StatusBadRequest)
+	}
+
+	stats := srv.store.Stats()
+	if stats.Accepted != 1 || stats.Rejected != 1 {
+		t.Fatalf("accepted=%d rejected=%d, want 1 and 1; a refused delivery still arrived",
+			stats.Accepted, stats.Rejected)
+	}
+}
+
 func TestDeliverAcceptsABodyWithoutMetadata(t *testing.T) {
 	srv, handler := newTestServer()
 

@@ -156,6 +156,36 @@ func TestPerAddressCounts(t *testing.T) {
 	}
 }
 
+func TestAcceptedAndRejectedCounts(t *testing.T) {
+	s := NewStore()
+
+	statuses := []int{200, 200, 204, 400, 500, 429}
+	for n, status := range statuses {
+		s.Record(Sample{
+			Key:       fmt.Sprintf("event-%d", n),
+			Addr:      ":8080",
+			Status:    status,
+			ArrivedAt: base.Add(time.Duration(n) * time.Millisecond),
+		})
+	}
+
+	stats := s.Stats()
+
+	if stats.Deliveries != 6 {
+		t.Fatalf("deliveries = %d, want 6", stats.Deliveries)
+	}
+	if stats.Accepted != 3 {
+		t.Fatalf("accepted = %d, want 3; only 2xx counts as accepted", stats.Accepted)
+	}
+	if stats.Rejected != 3 {
+		t.Fatalf("rejected = %d, want 3", stats.Rejected)
+	}
+	if stats.Accepted+stats.Rejected != stats.Deliveries {
+		t.Fatalf("accepted + rejected = %d, want %d; every arrival has an outcome",
+			stats.Accepted+stats.Rejected, stats.Deliveries)
+	}
+}
+
 func TestInversions(t *testing.T) {
 	tests := []struct {
 		name  string
