@@ -33,12 +33,15 @@ type options struct {
 	wait         bool
 	drainQuiet   time.Duration
 	drainTimeout time.Duration
+	profile      loadProfile
+	rate         int
 }
 
 type job struct {
 	orderingKey string
 	seq         int
 	endpointURL string
+	sentAt      time.Time
 }
 
 type results struct {
@@ -46,6 +49,13 @@ type results struct {
 	ids    []string
 	failed int
 }
+
+type loadProfile string
+
+const (
+	burstProfile  loadProfile = "burst"
+	steadyProfile loadProfile = "steady"
+)
 
 func (r *results) accepted(id string) {
 	r.mu.Lock()
@@ -75,44 +85,61 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Sized to the offered concurrency so the generator is never the bottleneck being measured.
+	inFlight := opts.concurrency
+	if opts.profile == steadyProfile {
+		inFlight = opts.keys
+	}
+
 	client := &http.Client{
 		Timeout: opts.timeout,
 		Transport: &http.Transport{
-			MaxIdleConns:        opts.concurrency * 2,
-			MaxIdleConnsPerHost: opts.concurrency,
+			MaxIdleConns:        inFlight * 2,
+			MaxIdleConnsPerHost: inFlight,
 		},
 	}
 
-	log.Printf(
-		"submitting %d events across %d ordering keys and %d hosts at concurrency %d",
-		opts.events, opts.keys, len(opts.endpoints), opts.concurrency,
-	)
-
-	if opts.concurrency > opts.keys {
+	if opts.profile == steadyProfile {
 		log.Printf(
-			"concurrency %d exceeds %d ordering keys; effective concurrency is %d",
-			opts.concurrency, opts.keys, opts.keys,
+			"submitting %d events across %d ordering keys and %d hosts at %d/s",
+			opts.events, opts.keys, len(opts.endpoints), opts.rate,
 		)
+	} else {
+		log.Printf(
+			"submitting %d events across %d ordering keys and %d hosts at concurrency %d",
+			opts.events, opts.keys, len(opts.endpoints), opts.concurrency,
+		)
+
+		if opts.concurrency > opts.keys {
+			log.Printf(
+				"concurrency %d exceeds %d ordering keys; effective concurrency is %d",
+				opts.concurrency, opts.keys, opts.keys,
+			)
+		}
 	}
 
 	res := &results{ids: make([]string, 0, opts.events)}
 
+	collisions := 0
 	start := time.Now()
 
-	wg := sync.WaitGroup{}
-	for worker := 0; worker < opts.concurrency; worker++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			submitKeys(client, opts, worker, res)
-		}()
+	if opts.profile == steadyProfile {
+		collisions = submitSteady(client, opts, res)
+	} else {
+		wg := sync.WaitGroup{}
+
+		for worker := 0; worker < opts.concurrency; worker++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				submitKeys(client, opts, worker, res)
+			}()
+		}
+		wg.Wait()
 	}
-	wg.Wait()
 
 	elapsed := time.Since(start)
 
-	report(res, elapsed)
+	report(res, opts, collisions, elapsed)
 
 	if !opts.wait {
 		return
@@ -134,6 +161,8 @@ func parseOptions() (options, error) {
 	wait := flag.Bool("wait", true, "wait for delivery to drain and report receiver metrics")
 	drainQuiet := flag.Duration("drain-quiet", 20*time.Second, "stop waiting after this long with no new deliveries")
 	drainTimeout := flag.Duration("drain-timeout", 5*time.Minute, "stop waiting after this long regardless")
+	profile := flag.String("profile", "burst", "Request load profile, burst or steady")
+	rate := flag.Int("rate", 500, "events per second for the steady profile")
 
 	flag.Parse()
 
@@ -147,6 +176,8 @@ func parseOptions() (options, error) {
 		wait:         *wait,
 		drainQuiet:   *drainQuiet,
 		drainTimeout: *drainTimeout,
+		profile:      loadProfile(*profile),
+		rate:         *rate,
 	}
 
 	for _, endpoint := range strings.Split(*endpoints, ",") {
@@ -167,10 +198,73 @@ func parseOptions() (options, error) {
 	if opts.concurrency < 1 {
 		return options{}, errors.New("concurrency must be at least 1")
 	}
+	if opts.profile != burstProfile && opts.profile != steadyProfile {
+		return options{}, errors.New("unknown profile")
+	}
+	if opts.profile == steadyProfile && opts.rate < 1 {
+		return options{}, errors.New("invalid request rate")
+	}
 
 	return opts, nil
 }
 
+func submitSteady(client *http.Client, opts options, res *results) int {
+	wg := sync.WaitGroup{}
+	seqs := make(map[string]int)
+
+	free := make(chan int, opts.keys)
+	for k := 0; k < opts.keys; k++ {
+		free <- k
+	}
+
+	sent, collisions := 0, 0
+
+	interval := time.Second / time.Duration(opts.rate)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for sent < opts.events {
+		scheduled := <-ticker.C
+
+		select {
+		case k := <-free:
+			key := fmt.Sprintf("cust-%d", k)
+			seqs[key]++
+			sent++
+
+			endpoint := opts.endpoints[k%len(opts.endpoints)]
+			j := job{
+				orderingKey: key,
+				seq:         seqs[key],
+				endpointURL: endpoint + "/webhook/" + key,
+				sentAt:      scheduled,
+			}
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() {
+					free <- k
+				}()
+
+				id, err := submit(client, opts.apiURL, j)
+				if err != nil {
+					res.rejected()
+					log.Printf("failed to submit %s#%d: %v", key, j.seq, err)
+					return
+				}
+
+				res.accepted(id)
+			}()
+		default:
+			collisions++
+		}
+	}
+
+	wg.Wait()
+
+	return collisions
+}
 func submitKeys(client *http.Client, opts options, worker int, res *results) {
 	seqs := make(map[string]int)
 
@@ -189,6 +283,7 @@ func submitKeys(client *http.Client, opts options, worker int, res *results) {
 			orderingKey: key,
 			seq:         seqs[key],
 			endpointURL: endpoint + "/webhook/" + key,
+			sentAt:      time.Now().UTC(),
 		})
 		if err != nil {
 			res.rejected()
@@ -204,7 +299,7 @@ func submit(client *http.Client, apiURL string, j job) (string, error) {
 	payload, err := json.Marshal(receiver.Payload{
 		OrderingKey: j.orderingKey,
 		Seq:         j.seq,
-		SentAt:      time.Now().UTC(),
+		SentAt:      j.sentAt,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal payload: %w", err)
@@ -246,11 +341,6 @@ func submit(client *http.Client, apiURL string, j job) (string, error) {
 	return created.ID, nil
 }
 
-// Submission finishing does not mean delivery has: events are still in the events topic, in
-// flight, or waiting out a backoff. The exit condition is that every id this run submitted has
-// arrived — a count comparison would be satisfied by leftovers from an earlier run, or by a
-// second tester, and would stop early. Dead-lettered events never arrive at all, so on a run
-// with permanent failures nothing can satisfy it; that is what the quiet period is for.
 func waitForDrain(client *http.Client, opts options, submitted []string) (receiver.Stats, []string, string, time.Duration) {
 	start := time.Now()
 	deadline := start.Add(opts.drainTimeout)
@@ -261,8 +351,6 @@ func waitForDrain(client *http.Client, opts options, submitted []string) (receiv
 	missing := submitted
 
 	for {
-		// Ids first, then stats: the reported numbers must be at least as fresh as the
-		// decision made from them, or a fast run reports fewer deliveries than it waited for.
 		outstanding, idsErr := missingIDs(client, opts, submitted)
 		if idsErr != nil {
 			log.Printf("failed to read delivered ids: %v", idsErr)
@@ -419,7 +507,7 @@ func sample(ids []string, limit int) string {
 	return strings.Join(ids, " ")
 }
 
-func report(res *results, elapsed time.Duration) {
+func report(res *results, opts options, collisions int, elapsed time.Duration) {
 	res.mu.Lock()
 	defer res.mu.Unlock()
 
@@ -427,4 +515,8 @@ func report(res *results, elapsed time.Duration) {
 	fmt.Printf("accept errors    %d\n", res.failed)
 	fmt.Printf("duration         %s\n", elapsed.Round(time.Millisecond))
 	fmt.Printf("accept rate      %.0f/s\n", float64(len(res.ids))/elapsed.Seconds())
+
+	if opts.profile == steadyProfile {
+		fmt.Printf("key collisions   %d  (offered %d/s)\n", collisions, opts.rate)
+	}
 }
