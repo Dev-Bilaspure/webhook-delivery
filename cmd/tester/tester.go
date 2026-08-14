@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -35,6 +36,7 @@ type options struct {
 	drainTimeout time.Duration
 	profile      loadProfile
 	rate         int
+	json         bool
 }
 
 type job struct {
@@ -48,6 +50,26 @@ type results struct {
 	mu     sync.Mutex
 	ids    []string
 	failed int
+}
+
+type result struct {
+	Profile     string         `json:"profile"`
+	Events      int            `json:"events"`
+	Keys        int            `json:"keys"`
+	Hosts       int            `json:"hosts"`
+	Concurrency int            `json:"concurrency"`
+	Rate        int            `json:"rate"`
+	Submitted   int            `json:"submitted"`
+	AcceptErrs  int            `json:"acceptErrors"`
+	SubmitMs    float64        `json:"submitMs"`
+	AcceptRate  float64        `json:"acceptRatePerSec"`
+	Collisions  int            `json:"keyCollisions"`
+	Drained     bool           `json:"drained"`
+	DrainedMs   float64        `json:"drainedMs"`
+	DrainReason string         `json:"drainReason"`
+	Unaccounted int            `json:"unaccounted"`
+	MissingIDs  string         `json:"missingIds,omitempty"`
+	Stats       receiver.Stats `json:"stats"`
 }
 
 type loadProfile string
@@ -139,15 +161,39 @@ func main() {
 
 	elapsed := time.Since(start)
 
-	report(res, opts, collisions, elapsed)
+	run := result{
+		Profile:     string(opts.profile),
+		Events:      opts.events,
+		Keys:        opts.keys,
+		Hosts:       len(opts.endpoints),
+		Concurrency: opts.concurrency,
+		Rate:        opts.rate,
+		Submitted:   len(res.submitted()),
+		AcceptErrs:  res.failed,
+		SubmitMs:    millis(elapsed),
+		AcceptRate:  float64(len(res.submitted())) / elapsed.Seconds(),
+		Collisions:  collisions,
+	}
 
-	if !opts.wait {
+	if opts.wait {
+		stats, missing, reason, drainedAfter := waitForDrain(client, opts, res.submitted())
+
+		run.Drained = true
+		run.DrainedMs = millis(drainedAfter)
+		run.DrainReason = reason
+		run.Unaccounted = len(missing)
+		run.MissingIDs = sample(missing, 10)
+		run.Stats = stats
+	}
+
+	if opts.json {
+		if err := json.NewEncoder(os.Stdout).Encode(run); err != nil {
+			log.Fatalf("failed to encode result: %v", err)
+		}
 		return
 	}
 
-	stats, missing, reason, drainedAfter := waitForDrain(client, opts, res.submitted())
-
-	reportDelivery(stats, missing, drainedAfter, reason)
+	report(run)
 }
 
 func parseOptions() (options, error) {
@@ -163,6 +209,7 @@ func parseOptions() (options, error) {
 	drainTimeout := flag.Duration("drain-timeout", 5*time.Minute, "stop waiting after this long regardless")
 	profile := flag.String("profile", "burst", "Request load profile, burst or steady")
 	rate := flag.Int("rate", 500, "events per second for the steady profile")
+	asJSON := flag.Bool("json", false, "emit the result as a single JSON object instead of a report")
 
 	flag.Parse()
 
@@ -178,6 +225,7 @@ func parseOptions() (options, error) {
 		drainTimeout: *drainTimeout,
 		profile:      loadProfile(*profile),
 		rate:         *rate,
+		json:         *asJSON,
 	}
 
 	for _, endpoint := range strings.Split(*endpoints, ",") {
@@ -442,24 +490,43 @@ func getJSON(client *http.Client, url string, into any) error {
 	return json.NewDecoder(resp.Body).Decode(into)
 }
 
-func reportDelivery(stats receiver.Stats, missing []string, drainedAfter time.Duration, reason string) {
-	fmt.Printf("\ndrained after    %s  (%s)\n", drainedAfter.Round(time.Millisecond), reason)
-	fmt.Printf("arrived          %d  (unique %d, duplicates %d)\n", stats.Deliveries, stats.UniqueEvents, stats.Duplicates)
-	fmt.Printf("  accepted       %d\n", stats.Accepted)
-	fmt.Printf("  refused        %d\n", stats.Rejected)
+func report(r result) {
+	fmt.Printf("\nsubmitted        %d\n", r.Submitted)
+	fmt.Printf("accept errors    %d\n", r.AcceptErrs)
+	fmt.Printf("duration         %.0fms\n", r.SubmitMs)
+	fmt.Printf("accept rate      %.0f/s\n", r.AcceptRate)
 
-	fmt.Printf("unaccounted      %d", len(missing))
-	if len(missing) > 0 {
-		fmt.Printf("  %s  (cross-check against dead-letter depth)", sample(missing, 5))
+	if r.Profile == string(steadyProfile) {
+		fmt.Printf("key collisions   %d  (offered %d/s)\n", r.Collisions, r.Rate)
+	}
+
+	if !r.Drained {
+		return
+	}
+
+	s := r.Stats
+
+	fmt.Printf("\ndrained after    %.0fms  (%s)\n", r.DrainedMs, r.DrainReason)
+	fmt.Printf("arrived          %d  (unique %d, duplicates %d)\n", s.Deliveries, s.UniqueEvents, s.Duplicates)
+	fmt.Printf("  accepted       %d\n", s.Accepted)
+	fmt.Printf("  refused        %d\n", s.Rejected)
+
+	fmt.Printf("unaccounted      %d", r.Unaccounted)
+	if r.Unaccounted > 0 {
+		fmt.Printf("  %s  (cross-check against dead-letter depth)", r.MissingIDs)
 	}
 	fmt.Println()
 
-	fmt.Printf("\nfirst-attempt    %s\n", latency(stats.FirstAttempt))
-	fmt.Printf("retried          %s\n", latency(stats.Retried))
-	fmt.Printf("peak delivery    %d/s\n", peak(stats.Throughput))
+	fmt.Printf("\nfirst-attempt    %s\n", latency(s.FirstAttempt))
+	fmt.Printf("retried          %s\n", latency(s.Retried))
+	fmt.Printf("peak delivery    %d/s\n", peak(s.Throughput))
 
-	fmt.Printf("\nordering         %d inversions across %d keys\n", stats.Inversions, stats.OrderingKeys)
-	fmt.Printf("per host         %s\n", perHost(stats.ByAddr))
+	fmt.Printf("\nordering         %d inversions across %d keys\n", s.Inversions, s.OrderingKeys)
+	fmt.Printf("per host         %s\n", perHost(s.ByAddr))
+}
+
+func millis(d time.Duration) float64 {
+	return float64(d) / float64(time.Millisecond)
 }
 
 func latency(l receiver.Latency) string {
@@ -505,18 +572,4 @@ func sample(ids []string, limit int) string {
 	}
 
 	return strings.Join(ids, " ")
-}
-
-func report(res *results, opts options, collisions int, elapsed time.Duration) {
-	res.mu.Lock()
-	defer res.mu.Unlock()
-
-	fmt.Printf("\nsubmitted        %d\n", len(res.ids))
-	fmt.Printf("accept errors    %d\n", res.failed)
-	fmt.Printf("duration         %s\n", elapsed.Round(time.Millisecond))
-	fmt.Printf("accept rate      %.0f/s\n", float64(len(res.ids))/elapsed.Seconds())
-
-	if opts.profile == steadyProfile {
-		fmt.Printf("key collisions   %d  (offered %d/s)\n", collisions, opts.rate)
-	}
 }
