@@ -79,7 +79,7 @@ type healthResponse struct {
 	Health string `json:"health"`
 }
 
-func HealthCheck(w http.ResponseWriter, r *http.Request) {
+func HealthCheck(w http.ResponseWriter, _ *http.Request) {
 	h := healthResponse{
 		Health: "ok",
 	}

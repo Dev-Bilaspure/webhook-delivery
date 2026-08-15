@@ -23,7 +23,7 @@ type recordingPublisher struct {
 	messages []kafkago.Message
 }
 
-func (p *recordingPublisher) Publish(ctx context.Context, key string, value []byte) error {
+func (p *recordingPublisher) Publish(_ context.Context, key string, value []byte) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.messages = append(p.messages, kafkago.Message{Key: []byte(key), Value: value})
@@ -102,7 +102,7 @@ func testMessage(t *testing.T, key string, nextRetryAt time.Time) kafkago.Messag
 func TestDeliverGroupDefersQueuedMessagesAfterAFailure(t *testing.T) {
 	var received int
 
-	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		received++
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -220,7 +220,7 @@ func TestDeliverGroupDeadLettersPermanentRejections(t *testing.T) {
 func TestDeliverGroupKeepsRetryBudgetWhenBreakerIsOpen(t *testing.T) {
 	var received int
 
-	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		received++
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -329,7 +329,7 @@ func TestDeliverGroupDeadLettersExpiredEvents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var received int
 
-			endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				received++
 				w.WriteHeader(http.StatusOK)
 			}))

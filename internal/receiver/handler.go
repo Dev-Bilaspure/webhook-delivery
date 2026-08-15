@@ -132,7 +132,7 @@ func (s *Server) keys(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) reset(w http.ResponseWriter, r *http.Request) {
+func (s *Server) reset(w http.ResponseWriter, _ *http.Request) {
 	s.store.Reset()
 	w.WriteHeader(http.StatusNoContent)
 }
