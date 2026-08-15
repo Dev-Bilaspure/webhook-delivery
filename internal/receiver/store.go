@@ -39,8 +39,9 @@ type Bucket struct {
 }
 
 type AddrStats struct {
-	Deliveries int      `json:"deliveries"`
-	Throughput []Bucket `json:"throughput"`
+	Deliveries   int      `json:"deliveries"`
+	FirstAttempt Latency  `json:"firstAttempt"`
+	Throughput   []Bucket `json:"throughput"`
 }
 
 type Stats struct {
@@ -154,9 +155,17 @@ func (s *Store) Stats(prefix string) Stats {
 	stats.Throughput = bucket(samples, origin)
 
 	for addr, addrSamples := range byAddr {
+		latencies := make([]time.Duration, 0, len(addrSamples))
+		for _, sample := range addrSamples {
+			if sample.Latency > 0 && sample.FirstAttempt {
+				latencies = append(latencies, sample.Latency)
+			}
+		}
+
 		stats.ByAddr[addr] = AddrStats{
-			Deliveries: len(addrSamples),
-			Throughput: bucket(addrSamples, origin),
+			Deliveries:   len(addrSamples),
+			FirstAttempt: summarise(latencies),
+			Throughput:   bucket(addrSamples, origin),
 		}
 	}
 
