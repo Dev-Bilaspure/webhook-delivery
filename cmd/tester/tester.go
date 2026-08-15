@@ -37,6 +37,7 @@ type options struct {
 	profile      loadProfile
 	rate         int
 	json         bool
+	keyPrefix    string
 }
 
 type job struct {
@@ -54,6 +55,7 @@ type results struct {
 
 type result struct {
 	Profile     string         `json:"profile"`
+	KeyPrefix   string         `json:"keyPrefix"`
 	Events      int            `json:"events"`
 	Keys        int            `json:"keys"`
 	Hosts       int            `json:"hosts"`
@@ -163,6 +165,7 @@ func main() {
 
 	run := result{
 		Profile:     string(opts.profile),
+		KeyPrefix:   opts.keyPrefix,
 		Events:      opts.events,
 		Keys:        opts.keys,
 		Hosts:       len(opts.endpoints),
@@ -210,6 +213,7 @@ func parseOptions() (options, error) {
 	profile := flag.String("profile", "burst", "Request load profile, burst or steady")
 	rate := flag.Int("rate", 500, "events per second for the steady profile")
 	asJSON := flag.Bool("json", false, "emit the result as a single JSON object instead of a report")
+	keyPrefix := flag.String("key-prefix", "", "namespace for this run's ordering keys; defaults to a unique value")
 
 	flag.Parse()
 
@@ -226,6 +230,11 @@ func parseOptions() (options, error) {
 		profile:      loadProfile(*profile),
 		rate:         *rate,
 		json:         *asJSON,
+		keyPrefix:    *keyPrefix,
+	}
+
+	if opts.keyPrefix == "" {
+		opts.keyPrefix = fmt.Sprintf("r%d", time.Now().UnixNano()%1e9)
 	}
 
 	for _, endpoint := range strings.Split(*endpoints, ",") {
@@ -276,7 +285,7 @@ func submitSteady(client *http.Client, opts options, res *results) int {
 
 		select {
 		case k := <-free:
-			key := fmt.Sprintf("cust-%d", k)
+			key := fmt.Sprintf("%s-cust-%d", opts.keyPrefix, k)
 			seqs[key]++
 			sent++
 
@@ -322,7 +331,7 @@ func submitKeys(client *http.Client, opts options, worker int, res *results) {
 			continue
 		}
 
-		key := fmt.Sprintf("cust-%d", keyIndex)
+		key := fmt.Sprintf("%s-cust-%d", opts.keyPrefix, keyIndex)
 		seqs[key]++
 
 		endpoint := opts.endpoints[keyIndex%len(opts.endpoints)]
@@ -406,7 +415,7 @@ func waitForDrain(client *http.Client, opts options, submitted []string) (receiv
 			missing = outstanding
 		}
 
-		fetched, statsErr := fetchStats(client, opts.statsURL)
+		fetched, statsErr := fetchStats(client, opts.statsURL, opts.keyPrefix)
 		if statsErr != nil {
 			log.Printf("failed to read receiver stats: %v", statsErr)
 		} else {
@@ -435,7 +444,7 @@ func waitForDrain(client *http.Client, opts options, submitted []string) (receiv
 }
 
 func missingIDs(client *http.Client, opts options, submitted []string) ([]string, error) {
-	arrived, err := fetchKeys(client, opts.statsURL)
+	arrived, err := fetchKeys(client, opts.statsURL, opts.keyPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -455,18 +464,18 @@ func missingIDs(client *http.Client, opts options, submitted []string) ([]string
 	return missing, nil
 }
 
-func fetchStats(client *http.Client, statsURL string) (receiver.Stats, error) {
+func fetchStats(client *http.Client, statsURL, prefix string) (receiver.Stats, error) {
 	response := receiver.StatsResponse{}
-	if err := getJSON(client, statsURL+"/stats", &response); err != nil {
+	if err := getJSON(client, statsURL+"/stats?prefix="+prefix, &response); err != nil {
 		return receiver.Stats{}, err
 	}
 
 	return response.Stats, nil
 }
 
-func fetchKeys(client *http.Client, statsURL string) ([]string, error) {
+func fetchKeys(client *http.Client, statsURL, prefix string) ([]string, error) {
 	keys := []string{}
-	if err := getJSON(client, statsURL+"/keys", &keys); err != nil {
+	if err := getJSON(client, statsURL+"/keys?prefix="+prefix, &keys); err != nil {
 		return nil, err
 	}
 
