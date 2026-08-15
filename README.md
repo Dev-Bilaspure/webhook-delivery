@@ -235,12 +235,12 @@ here; everything else is test infrastructure.
    │                      ▼                                   │
    │               one shared store                           │
    │      key · seq · addr · status · arrived · latency       │
-   └──────────────────────┬───────────────────────────────────┘
-                          │  GET /stats?prefix=
-                          │  GET /keys?prefix=
-                          ▼
-              tester polls once a second until
-              every submitted id has arrived
+   └──────────────────────────────────────────┬───────────────┘
+                                              │
+              cmd/tester reads back ──────────┘
+              GET /stats?prefix=  ·  GET /keys?prefix=
+              once a second, until every submitted id has
+              arrived or nothing new has landed for a while
                           │
                           ▼
         bench/<scenario>-<profile>-<rep>.json
