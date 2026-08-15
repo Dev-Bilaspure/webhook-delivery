@@ -21,7 +21,7 @@ type RetryEvent struct {
 	NextRetryAt time.Time `json:"nextRetry"`
 }
 
-func (e Event) ValidateUrl() error {
+func (e Event) ValidateURL() error {
 	if e.EndpointURL == "" {
 		return errors.New("endpoint URL is required")
 	}

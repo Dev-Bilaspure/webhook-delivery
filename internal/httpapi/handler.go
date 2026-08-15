@@ -43,7 +43,7 @@ func (s *Server) CreateEvent(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	if err := e.ValidateUrl(); err != nil {
+	if err := e.ValidateURL(); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
