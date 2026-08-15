@@ -35,9 +35,8 @@ func (b *Breaker) Allow() bool {
 		if b.now().Sub(b.openedAt) >= b.cooldown {
 			b.state = HalfOpen
 			return true
-		} else {
-			return false
 		}
+		return false
 	case HalfOpen:
 		return false
 	default:
