@@ -43,11 +43,16 @@ lag() {
 # arrivals to pause is not enough — the gap between cooldowns looks identical to being finished.
 # Both consumer groups reaching zero lag is the real signal that nothing is still in flight.
 settle() {
-  local waited=0
+  local waited=0 quiet=0
+
+  # A failing event makes the retry topic oscillate — consumed, republished, consumed — so one
+  # zero reading can be the dip between cycles rather than a real drain.
   while [ "$waited" -lt "$SETTLE_TIMEOUT" ]; do
     if [ "$(lag delivery-worker)" = "0" ] && [ "$(lag retry-worker)" = "0" ]; then
-      sleep 2
-      [ "$(lag delivery-worker)" = "0" ] && [ "$(lag retry-worker)" = "0" ] && return 0
+      quiet=$((quiet + 1))
+      [ "$quiet" -ge 3 ] && return 0
+    else
+      quiet=0
     fi
     sleep 5
     waited=$((waited + 5))
