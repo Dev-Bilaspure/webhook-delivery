@@ -1,11 +1,10 @@
-# webhook-delivery
+# Reliable Webhook Delivery
 
-Accepts webhook events over HTTP and delivers them to customer endpoints. Kafka sits
-between accept and deliver, so accepting is fast and durable while delivery is async,
-with retries, exponential backoff, a dead-letter queue, per-endpoint ordering,
-idempotency, concurrency limits, and per-host circuit breaking.
+Accepts webhook events over HTTP and delivers them to customer endpoints. Kafka sits between acceptance and delivery, making ingestion fast and durable while delivery happens asynchronously with retries, exponential backoff, a dead-letter queue, per-endpoint ordering, idempotency, concurrency limits, and per-host circuit breaking.
 
-Built to learn Go and distributed-systems patterns. Single-broker local setup; see [Notes](#notes).
+The repository also includes a comprehensive test and benchmark harness for measuring delivery behavior, throughput, latency, and failure recovery under realistic load.
+
+A practical implementation of reliable event delivery in Go, with a focus on failure handling, delivery guarantees, and distributed-systems behavior. Single-broker local setup; see [Notes](#notes).
 
 ## Architecture
 
