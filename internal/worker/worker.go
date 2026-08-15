@@ -18,12 +18,12 @@ import (
 	"github.com/dev-bilaspure/webhook-delivery/internal/kafka"
 )
 
-type WorkerType string
+type Type string
 
 const (
-	DeliveryWorker WorkerType = "delivery_worker"
-	RetryWorker    WorkerType = "retry_worker"
-	DLQWorker      WorkerType = "dlq_worker"
+	DeliveryWorker Type = "delivery_worker"
+	RetryWorker    Type = "retry_worker"
+	DLQWorker      Type = "dlq_worker"
 )
 
 type Publisher interface {
@@ -35,11 +35,11 @@ type Worker struct {
 	deliverer     *delivery.Deliverer
 	retryProducer Publisher
 	dlqProducer   Publisher
-	workerType    WorkerType
+	workerType    Type
 	cfg           config.Config
 }
 
-func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer Publisher, dlqProducer Publisher, workerType WorkerType, cfg config.Config) *Worker {
+func NewWorker(consumer *kafka.Consumer, deliverer *delivery.Deliverer, retryProducer Publisher, dlqProducer Publisher, workerType Type, cfg config.Config) *Worker {
 	return &Worker{
 		consumer:      consumer,
 		deliverer:     deliverer,
