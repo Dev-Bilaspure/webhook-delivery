@@ -17,11 +17,14 @@ CONCURRENCY=${CONCURRENCY:-100}
 EVENTS=${EVENTS:-3000}
 KEYS=${KEYS:-400}
 SETTLE_TIMEOUT=${SETTLE_TIMEOUT:-300}
+BREAKER_COOLDOWN=${BREAKER_COOLDOWN:-45}
+
+faults_were_set=0
 
 fail() { echo "error: $*" >&2; exit 1; }
 
 preflight() {
-  curl -sf "$API/healthz" >/dev/null || fail "api not reachable at $API — start it first"
+  curl -sf "$API/healthz" >/dev/null || fail "api not reachable at $API, start it first"
   for p in "${RECEIVERS[@]}"; do
     curl -sf "http://localhost:$p/stats" >/dev/null || fail "receiver not reachable on :$p"
   done
@@ -40,12 +43,12 @@ lag() {
 }
 
 # A previous run can leave events parked in retries on a 45s breaker cooldown. Waiting for
-# arrivals to pause is not enough — the gap between cooldowns looks identical to being finished.
+# arrivals to pause is not enough; the gap between cooldowns looks identical to being finished.
 # Both consumer groups reaching zero lag is the real signal that nothing is still in flight.
 settle() {
   local waited=0 quiet=0
 
-  # A failing event makes the retry topic oscillate — consumed, republished, consumed — so one
+  # A failing event makes the retry topic oscillate (consumed, republished, consumed), so one
   # zero reading can be the dip between cycles rather than a real drain.
   while [ "$waited" -lt "$SETTLE_TIMEOUT" ]; do
     if [ "$(lag delivery-worker)" = "0" ] && [ "$(lag retry-worker)" = "0" ]; then
@@ -106,6 +109,12 @@ run_once() {
   local scenario=$1 rep=$2 quiet dlq_before dlq_after retries_before retries_after out
 
   clear_faults
+
+  if [ "$faults_were_set" = "1" ]; then
+    echo "  waiting ${BREAKER_COOLDOWN}s for breakers opened by the previous run to close"
+    sleep "$BREAKER_COOLDOWN"
+  fi
+
   if ! settle; then
     echo "  skipping: the system has not drained, results would include an earlier run" >&2
     return 0
@@ -116,6 +125,8 @@ run_once() {
 
   quiet=$(arrange "$scenario")
   schedule "$scenario"
+
+  [ "$scenario" = "baseline" ] && faults_were_set=0 || faults_were_set=1
 
   out="$OUT/$scenario-$PROFILE-$rep.json"
   # shellcheck disable=SC2046,SC2086
