@@ -63,7 +63,7 @@ func TestControlChangesDeliveryBehaviour(t *testing.T) {
 		t.Fatalf("status = %d, want %d after recovering", got, http.StatusOK)
 	}
 
-	if got := srv.store.Stats().Deliveries; got != 3 {
+	if got := srv.store.Stats("").Deliveries; got != 3 {
 		t.Fatalf("deliveries = %d, want 3; refused deliveries still arrived", got)
 	}
 }
@@ -161,7 +161,7 @@ func TestDeliverRecordsTheStatusItReturned(t *testing.T) {
 		t.Fatalf("samples[1].Status = %d, want %d", got, http.StatusBadRequest)
 	}
 
-	stats := srv.store.Stats()
+	stats := srv.store.Stats("")
 	if stats.Accepted != 1 || stats.Rejected != 1 {
 		t.Fatalf("accepted=%d rejected=%d, want 1 and 1; a refused delivery still arrived",
 			stats.Accepted, stats.Rejected)
@@ -188,7 +188,7 @@ func TestDeliverAcceptsABodyWithoutMetadata(t *testing.T) {
 		t.Fatalf("orderingKey = %q, want empty", sample.OrderingKey)
 	}
 
-	if got := srv.store.Stats().FirstAttempt.Count; got != 0 {
+	if got := srv.store.Stats("").FirstAttempt.Count; got != 0 {
 		t.Fatalf("firstAttempt count = %d, want 0; an unmeasurable sample must not enter the percentiles", got)
 	}
 }
@@ -227,7 +227,7 @@ func TestResetClearsSamplesButKeepsTheFault(t *testing.T) {
 		t.Fatalf("reset status = %d, want %d", got, http.StatusNoContent)
 	}
 
-	if got := srv.store.Stats().Deliveries; got != 0 {
+	if got := srv.store.Stats("").Deliveries; got != 0 {
 		t.Fatalf("deliveries = %d, want 0 after reset", got)
 	}
 

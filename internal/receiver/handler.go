@@ -118,7 +118,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 	response := StatsResponse{
 		Addr:  s.addr,
 		Mode:  s.inj.Mode(),
-		Stats: s.store.Stats(),
+		Stats: s.store.Stats(r.URL.Query().Get("prefix")),
 	}
 
 	if err := httpapi.WriteJSON(w, http.StatusOK, response); err != nil {
@@ -127,7 +127,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) keys(w http.ResponseWriter, r *http.Request) {
-	if err := httpapi.WriteJSON(w, http.StatusOK, s.store.Keys()); err != nil {
+	if err := httpapi.WriteJSON(w, http.StatusOK, s.store.Keys(r.URL.Query().Get("prefix"))); err != nil {
 		log.Printf("failed to encode response: %v", err)
 	}
 }

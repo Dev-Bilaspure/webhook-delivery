@@ -3,6 +3,7 @@ package receiver
 import (
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -77,12 +78,19 @@ func (s *Store) Reset() {
 	s.seen = make(map[string]int)
 }
 
-func (s *Store) Keys() []string {
+func (s *Store) Keys(prefix string) []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	keys := make([]string, 0, len(s.seen))
-	for k := range s.seen {
+	seen := make(map[string]bool, len(s.seen))
+	for _, sample := range s.samples {
+		if strings.HasPrefix(sample.OrderingKey, prefix) {
+			seen[sample.Key] = true
+		}
+	}
+
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -90,17 +98,25 @@ func (s *Store) Keys() []string {
 	return keys
 }
 
-func (s *Store) Stats() Stats {
+func (s *Store) Stats(prefix string) Stats {
 	s.mu.Lock()
-	samples := make([]Sample, len(s.samples))
-	copy(samples, s.samples)
-	unique := len(s.seen)
+	samples := make([]Sample, 0, len(s.samples))
+	for _, sample := range s.samples {
+		if strings.HasPrefix(sample.OrderingKey, prefix) {
+			samples = append(samples, sample)
+		}
+	}
 	s.mu.Unlock()
+
+	unique := make(map[string]bool, len(samples))
+	for _, sample := range samples {
+		unique[sample.Key] = true
+	}
 
 	stats := Stats{
 		Deliveries:   len(samples),
-		UniqueEvents: unique,
-		Duplicates:   len(samples) - unique,
+		UniqueEvents: len(unique),
+		Duplicates:   len(samples) - len(unique),
 		ByAddr:       make(map[string]AddrStats),
 	}
 
@@ -149,7 +165,6 @@ func (s *Store) Stats() Stats {
 	return stats
 }
 
-// An inversion is an event arriving after one with a higher seq for the same ordering key.
 func inversions(samples []Sample) (int, int) {
 	highest := make(map[string]int)
 	count := 0

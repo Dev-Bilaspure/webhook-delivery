@@ -55,7 +55,7 @@ func TestPercentiles(t *testing.T) {
 				})
 			}
 
-			got := s.Stats().FirstAttempt
+			got := s.Stats("").FirstAttempt
 
 			if got.Count != len(tt.latencies) {
 				t.Fatalf("count = %d, want %d", got.Count, len(tt.latencies))
@@ -82,7 +82,7 @@ func TestFirstAttemptIsSeparatedFromRetries(t *testing.T) {
 	s.Record(Sample{Key: "event-1", Addr: ":8080", ArrivedAt: base, Latency: 12 * time.Millisecond})
 	s.Record(Sample{Key: "event-1", Addr: ":8080", ArrivedAt: base.Add(2 * time.Second), Latency: 2014 * time.Millisecond})
 
-	stats := s.Stats()
+	stats := s.Stats("")
 
 	if stats.Deliveries != 2 {
 		t.Fatalf("deliveries = %d, want 2", stats.Deliveries)
@@ -123,7 +123,7 @@ func TestThroughputBuckets(t *testing.T) {
 	}
 
 	want := []Bucket{{Second: 0, Count: 2}, {Second: 1, Count: 1}, {Second: 2, Count: 2}}
-	got := s.Stats().Throughput
+	got := s.Stats("").Throughput
 
 	if len(got) != len(want) {
 		t.Fatalf("throughput = %+v, want %+v", got, want)
@@ -147,7 +147,7 @@ func TestPerAddressCounts(t *testing.T) {
 		})
 	}
 
-	byAddr := s.Stats().ByAddr
+	byAddr := s.Stats("").ByAddr
 
 	for addr, want := range map[string]int{":8080": 3, ":8081": 1, ":8082": 2} {
 		if got := byAddr[addr].Deliveries; got != want {
@@ -169,7 +169,7 @@ func TestAcceptedAndRejectedCounts(t *testing.T) {
 		})
 	}
 
-	stats := s.Stats()
+	stats := s.Stats("")
 
 	if stats.Deliveries != 6 {
 		t.Fatalf("deliveries = %d, want 6", stats.Deliveries)
@@ -237,7 +237,7 @@ func TestInversions(t *testing.T) {
 				}
 			}
 
-			stats := s.Stats()
+			stats := s.Stats("")
 
 			if stats.Inversions != tt.want {
 				t.Fatalf("inversions = %d, want %d", stats.Inversions, tt.want)
@@ -270,7 +270,7 @@ func TestRetriesAreNotCountedAsInversions(t *testing.T) {
 		ArrivedAt:   base.Add(time.Second),
 	})
 
-	if got := s.Stats().Inversions; got != 0 {
+	if got := s.Stats("").Inversions; got != 0 {
 		t.Fatalf("inversions = %d, want 0; a redelivery is at-least-once working, not a violation", got)
 	}
 }
@@ -281,19 +281,19 @@ func TestResetClearsSamples(t *testing.T) {
 	s.Record(Sample{Key: "event-1", Addr: ":8080", ArrivedAt: base, Latency: time.Millisecond})
 	s.Reset()
 
-	stats := s.Stats()
+	stats := s.Stats("")
 
 	if stats.Deliveries != 0 || stats.UniqueEvents != 0 {
 		t.Fatalf("stats = %+v, want empty", stats)
 	}
 
-	if len(s.Keys()) != 0 {
-		t.Fatalf("keys = %v, want empty", s.Keys())
+	if len(s.Keys("")) != 0 {
+		t.Fatalf("keys = %v, want empty", s.Keys(""))
 	}
 
 	s.Record(Sample{Key: "event-2", Addr: ":8080", ArrivedAt: base, Latency: 5 * time.Millisecond})
 
-	if got := s.Stats().FirstAttempt.Count; got != 1 {
+	if got := s.Stats("").FirstAttempt.Count; got != 1 {
 		t.Fatalf("firstAttempt count = %d, want 1; a key recorded after reset is a first attempt", got)
 	}
 }
