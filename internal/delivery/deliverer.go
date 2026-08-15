@@ -68,7 +68,7 @@ func (d *Deliverer) Deliver(ctx context.Context, e event.Event) error {
 	}
 
 	defer func() {
-		io.Copy(io.Discard, resp.Body)
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}()
 
