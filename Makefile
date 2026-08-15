@@ -66,6 +66,21 @@ run-receiver:
 tester:
 	go run ./cmd/tester
 
+## bench: run every scenario under both load profiles and print the table
+.PHONY: bench
+bench:
+	PROFILE=all ./scripts/bench.sh $(or $(S),all)
+
+## bench-quick: one rep of every scenario, steady only, for a smoke check
+.PHONY: bench-quick
+bench-quick:
+	REPS=1 PROFILE=steady ./scripts/bench.sh all
+
+## bench-summary: reprint the results table from bench/
+.PHONY: bench-summary
+bench-summary:
+	python3 scripts/summarise.py
+
 # ---- quality gates ----
 
 ## build: compile everything
