@@ -1,0 +1,117 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r661021000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 453.091541,
+  "acceptRatePerSec": 6621.1785666508395,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 46346.588583,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3006,
+    "accepted": 3000,
+    "rejected": 6,
+    "uniqueEvents": 3000,
+    "duplicates": 6,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 33.992,
+      "p95Ms": 45041.477,
+      "p99Ms": 45222.175,
+      "maxMs": 45592.091
+    },
+    "retried": {
+      "count": 6,
+      "p50Ms": 2042.177,
+      "p95Ms": 45854.915,
+      "p99Ms": 45854.915,
+      "maxMs": 45854.915
+    },
+    "inversions": 1,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 2005
+      },
+      {
+        "second": 2,
+        "count": 3
+      },
+      {
+        "second": 45,
+        "count": 998
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1005,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 1005
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 1004,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 2,
+            "count": 3
+          },
+          {
+            "second": 45,
+            "count": 998
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 997
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "breaker",
+  "rep": 3,
+  "deadLetterDelta": 0,
+  "retriesDelta": 1002
+}

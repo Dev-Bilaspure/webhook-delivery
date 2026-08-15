@@ -1,0 +1,434 @@
+{
+  "profile": "steady",
+  "keyPrefix": "r799342000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 20,
+  "rate": 300,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 10065,
+  "acceptRatePerSec": 298.06259314456037,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 600959.90575,
+  "drainReason": "gave up after 10m0s",
+  "unaccounted": 913,
+  "missingIds": "a2f39032-e4c0-40d3-bbad-9ec98a88939e 9c29b075-4ebe-46ab-80b1-cb73f34296b2 8158bfe2-5d98-435c-858e-6b379baf9b3a fedcc9f8-5244-49f8-b7ac-f7e5513d064f 97555dfb-ffa6-4536-9c7c-b8643ed2fe0d 66aae136-ebe1-4fc4-ab13-3b2c3359120d 57e83adb-fd62-4667-af09-f99e35e03e40 c23c737f-0cea-4152-96b8-8fd36f49e836 7c39e3f1-53f9-4066-aaf0-c691def99697 c92e2850-c924-4a16-9e9f-a90d118c7181 ...",
+  "stats": {
+    "deliveries": 2090,
+    "accepted": 2090,
+    "rejected": 0,
+    "uniqueEvents": 2087,
+    "duplicates": 3,
+    "firstAttempt": {
+      "count": 2087,
+      "p50Ms": 5411.46854,
+      "p95Ms": 9914.633112,
+      "p99Ms": 206992.182992,
+      "maxMs": 595664.238427
+    },
+    "retried": {
+      "count": 3,
+      "p50Ms": 474731.064226,
+      "p95Ms": 584813.087429,
+      "p99Ms": 584813.087429,
+      "maxMs": 584813.087429
+    },
+    "inversions": 0,
+    "orderingKeys": 337,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 36
+      },
+      {
+        "second": 10,
+        "count": 1970
+      },
+      {
+        "second": 44,
+        "count": 4
+      },
+      {
+        "second": 45,
+        "count": 7
+      },
+      {
+        "second": 55,
+        "count": 7
+      },
+      {
+        "second": 65,
+        "count": 5
+      },
+      {
+        "second": 75,
+        "count": 5
+      },
+      {
+        "second": 85,
+        "count": 5
+      },
+      {
+        "second": 95,
+        "count": 5
+      },
+      {
+        "second": 100,
+        "count": 1
+      },
+      {
+        "second": 105,
+        "count": 5
+      },
+      {
+        "second": 110,
+        "count": 1
+      },
+      {
+        "second": 115,
+        "count": 5
+      },
+      {
+        "second": 125,
+        "count": 5
+      },
+      {
+        "second": 135,
+        "count": 2
+      },
+      {
+        "second": 145,
+        "count": 1
+      },
+      {
+        "second": 155,
+        "count": 1
+      },
+      {
+        "second": 165,
+        "count": 1
+      },
+      {
+        "second": 200,
+        "count": 1
+      },
+      {
+        "second": 210,
+        "count": 1
+      },
+      {
+        "second": 220,
+        "count": 1
+      },
+      {
+        "second": 255,
+        "count": 1
+      },
+      {
+        "second": 265,
+        "count": 1
+      },
+      {
+        "second": 275,
+        "count": 1
+      },
+      {
+        "second": 310,
+        "count": 1
+      },
+      {
+        "second": 320,
+        "count": 1
+      },
+      {
+        "second": 330,
+        "count": 1
+      },
+      {
+        "second": 365,
+        "count": 1
+      },
+      {
+        "second": 375,
+        "count": 1
+      },
+      {
+        "second": 385,
+        "count": 1
+      },
+      {
+        "second": 420,
+        "count": 1
+      },
+      {
+        "second": 430,
+        "count": 1
+      },
+      {
+        "second": 440,
+        "count": 1
+      },
+      {
+        "second": 475,
+        "count": 1
+      },
+      {
+        "second": 485,
+        "count": 1
+      },
+      {
+        "second": 495,
+        "count": 1
+      },
+      {
+        "second": 530,
+        "count": 1
+      },
+      {
+        "second": 540,
+        "count": 1
+      },
+      {
+        "second": 550,
+        "count": 1
+      },
+      {
+        "second": 585,
+        "count": 1
+      },
+      {
+        "second": 595,
+        "count": 1
+      },
+      {
+        "second": 605,
+        "count": 1
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1006,
+        "firstAttempt": {
+          "count": 1006,
+          "p50Ms": 5212.463227,
+          "p95Ms": 9540.638858,
+          "p99Ms": 9940.789609,
+          "maxMs": 10034.465058
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 16
+          },
+          {
+            "second": 10,
+            "count": 990
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 87,
+        "firstAttempt": {
+          "count": 84,
+          "p50Ms": 104158.859147,
+          "p95Ms": 520972.585895,
+          "p99Ms": 595664.238427,
+          "maxMs": 595664.238427
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 44,
+            "count": 4
+          },
+          {
+            "second": 45,
+            "count": 7
+          },
+          {
+            "second": 55,
+            "count": 7
+          },
+          {
+            "second": 65,
+            "count": 5
+          },
+          {
+            "second": 75,
+            "count": 5
+          },
+          {
+            "second": 85,
+            "count": 5
+          },
+          {
+            "second": 95,
+            "count": 5
+          },
+          {
+            "second": 100,
+            "count": 1
+          },
+          {
+            "second": 105,
+            "count": 5
+          },
+          {
+            "second": 110,
+            "count": 1
+          },
+          {
+            "second": 115,
+            "count": 5
+          },
+          {
+            "second": 125,
+            "count": 5
+          },
+          {
+            "second": 135,
+            "count": 2
+          },
+          {
+            "second": 145,
+            "count": 1
+          },
+          {
+            "second": 155,
+            "count": 1
+          },
+          {
+            "second": 165,
+            "count": 1
+          },
+          {
+            "second": 200,
+            "count": 1
+          },
+          {
+            "second": 210,
+            "count": 1
+          },
+          {
+            "second": 220,
+            "count": 1
+          },
+          {
+            "second": 255,
+            "count": 1
+          },
+          {
+            "second": 265,
+            "count": 1
+          },
+          {
+            "second": 275,
+            "count": 1
+          },
+          {
+            "second": 310,
+            "count": 1
+          },
+          {
+            "second": 320,
+            "count": 1
+          },
+          {
+            "second": 330,
+            "count": 1
+          },
+          {
+            "second": 365,
+            "count": 1
+          },
+          {
+            "second": 375,
+            "count": 1
+          },
+          {
+            "second": 385,
+            "count": 1
+          },
+          {
+            "second": 420,
+            "count": 1
+          },
+          {
+            "second": 430,
+            "count": 1
+          },
+          {
+            "second": 440,
+            "count": 1
+          },
+          {
+            "second": 475,
+            "count": 1
+          },
+          {
+            "second": 485,
+            "count": 1
+          },
+          {
+            "second": 495,
+            "count": 1
+          },
+          {
+            "second": 530,
+            "count": 1
+          },
+          {
+            "second": 540,
+            "count": 1
+          },
+          {
+            "second": 550,
+            "count": 1
+          },
+          {
+            "second": 585,
+            "count": 1
+          },
+          {
+            "second": 595,
+            "count": 1
+          },
+          {
+            "second": 605,
+            "count": 1
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 997,
+          "p50Ms": 5224.414809,
+          "p95Ms": 9530.821776,
+          "p99Ms": 9926.583318,
+          "maxMs": 10016.479684
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 17
+          },
+          {
+            "second": 10,
+            "count": 980
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "bulkhead",
+  "rep": 2,
+  "deadLetterDelta": 0,
+  "retriesDelta": 11962
+}

@@ -1,0 +1,102 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r665335000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 415.739375,
+  "acceptRatePerSec": 7216.059340061306,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 21198.502042,
+  "drainReason": "no new deliveries for 20s",
+  "unaccounted": 63,
+  "missingIds": "c18e2915-a516-4e77-990b-fd41fc0ad69e 3a813705-62c9-485a-979f-b857c73b9b1d 7baa08de-684f-4219-ac62-830d9e572157 88197842-7ccd-4c4f-8ce6-f1185d0c1474 c0b6847c-1b7c-4e1e-a98b-d19fc7b5dfb9 3016a6cd-bb31-49e0-af52-fb1dc21ccb77 d8b1decf-791a-4462-b24d-02432dc94e22 6a9f90fd-2458-46e0-b9a2-69509e6d41ba e0f4d750-0b42-4f40-a3c7-f993267b4986 56dd1045-b7bf-457c-8311-c546e715f8bd ...",
+  "stats": {
+    "deliveries": 2937,
+    "accepted": 2937,
+    "rejected": 0,
+    "uniqueEvents": 2937,
+    "duplicates": 0,
+    "firstAttempt": {
+      "count": 2937,
+      "p50Ms": 28.575,
+      "p95Ms": 43.435,
+      "p99Ms": 216.999,
+      "maxMs": 222.109
+    },
+    "retried": {
+      "count": 0,
+      "p50Ms": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "maxMs": 0
+    },
+    "inversions": 0,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 2937
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 988,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 988
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 952,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 952
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 997
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "baseline",
+  "rep": 1,
+  "deadLetterDelta": 0,
+  "retriesDelta": 63
+}

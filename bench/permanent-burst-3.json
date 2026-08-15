@@ -1,0 +1,101 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r495823000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 391.562,
+  "acceptRatePerSec": 7661.621914281774,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 1016.491708,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3000,
+    "accepted": 2002,
+    "rejected": 998,
+    "uniqueEvents": 3000,
+    "duplicates": 0,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 26.865,
+      "p95Ms": 40.734,
+      "p99Ms": 225.107,
+      "maxMs": 236.726
+    },
+    "retried": {
+      "count": 0,
+      "p50Ms": 0,
+      "p95Ms": 0,
+      "p99Ms": 0,
+      "maxMs": 0
+    },
+    "inversions": 0,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 3000
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1005,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 1005
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 998,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 998
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 997
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "permanent",
+  "rep": 3,
+  "deadLetterDelta": 998,
+  "retriesDelta": 0
+}

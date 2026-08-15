@@ -1,0 +1,181 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r113538000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 433.781167,
+  "acceptRatePerSec": 6915.929570543111,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 53405.902083,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3834,
+    "accepted": 2946,
+    "rejected": 888,
+    "uniqueEvents": 3000,
+    "duplicates": 834,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 31.256,
+      "p95Ms": 45043.829,
+      "p99Ms": 45062.728,
+      "maxMs": 52865.338
+    },
+    "retried": {
+      "count": 834,
+      "p50Ms": 45046.666,
+      "p95Ms": 51032.681,
+      "p99Ms": 52957.878,
+      "maxMs": 53630.701
+    },
+    "inversions": 21,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 1988
+      },
+      {
+        "second": 2,
+        "count": 33
+      },
+      {
+        "second": 45,
+        "count": 1443
+      },
+      {
+        "second": 47,
+        "count": 101
+      },
+      {
+        "second": 49,
+        "count": 221
+      },
+      {
+        "second": 51,
+        "count": 24
+      },
+      {
+        "second": 53,
+        "count": 24
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1292,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 1005
+          },
+          {
+            "second": 2,
+            "count": 16
+          },
+          {
+            "second": 45,
+            "count": 221
+          },
+          {
+            "second": 49,
+            "count": 50
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 1260,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 2,
+            "count": 3
+          },
+          {
+            "second": 45,
+            "count": 988
+          },
+          {
+            "second": 47,
+            "count": 98
+          },
+          {
+            "second": 49,
+            "count": 121
+          },
+          {
+            "second": 51,
+            "count": 24
+          },
+          {
+            "second": 53,
+            "count": 23
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 1282,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 980
+          },
+          {
+            "second": 2,
+            "count": 14
+          },
+          {
+            "second": 45,
+            "count": 234
+          },
+          {
+            "second": 47,
+            "count": 3
+          },
+          {
+            "second": 49,
+            "count": 50
+          },
+          {
+            "second": 53,
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "chaos",
+  "rep": 2,
+  "deadLetterDelta": 0,
+  "retriesDelta": 1939
+}

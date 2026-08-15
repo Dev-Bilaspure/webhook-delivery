@@ -1,0 +1,401 @@
+{
+  "profile": "steady",
+  "keyPrefix": "r58893000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 20,
+  "rate": 300,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 10027.668875,
+  "acceptRatePerSec": 299.1722241127552,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 45305.30225,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3679,
+    "accepted": 2827,
+    "rejected": 852,
+    "uniqueEvents": 3000,
+    "duplicates": 679,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 218.321722,
+      "p95Ms": 45206.451637,
+      "p99Ms": 45224.571841,
+      "maxMs": 45238.86784
+    },
+    "retried": {
+      "count": 679,
+      "p50Ms": 45158.338076,
+      "p95Ms": 53802.987283,
+      "p99Ms": 54645.51955,
+      "maxMs": 54860.533218
+    },
+    "inversions": 0,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 188
+      },
+      {
+        "second": 1,
+        "count": 214
+      },
+      {
+        "second": 2,
+        "count": 137
+      },
+      {
+        "second": 3,
+        "count": 174
+      },
+      {
+        "second": 4,
+        "count": 170
+      },
+      {
+        "second": 5,
+        "count": 135
+      },
+      {
+        "second": 6,
+        "count": 158
+      },
+      {
+        "second": 7,
+        "count": 129
+      },
+      {
+        "second": 8,
+        "count": 114
+      },
+      {
+        "second": 9,
+        "count": 134
+      },
+      {
+        "second": 10,
+        "count": 10
+      },
+      {
+        "second": 45,
+        "count": 133
+      },
+      {
+        "second": 46,
+        "count": 163
+      },
+      {
+        "second": 47,
+        "count": 155
+      },
+      {
+        "second": 48,
+        "count": 193
+      },
+      {
+        "second": 49,
+        "count": 190
+      },
+      {
+        "second": 50,
+        "count": 166
+      },
+      {
+        "second": 51,
+        "count": 190
+      },
+      {
+        "second": 52,
+        "count": 219
+      },
+      {
+        "second": 53,
+        "count": 169
+      },
+      {
+        "second": 54,
+        "count": 303
+      },
+      {
+        "second": 55,
+        "count": 235
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1246,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 93
+          },
+          {
+            "second": 1,
+            "count": 108
+          },
+          {
+            "second": 2,
+            "count": 45
+          },
+          {
+            "second": 3,
+            "count": 67
+          },
+          {
+            "second": 4,
+            "count": 64
+          },
+          {
+            "second": 5,
+            "count": 49
+          },
+          {
+            "second": 6,
+            "count": 55
+          },
+          {
+            "second": 7,
+            "count": 64
+          },
+          {
+            "second": 8,
+            "count": 53
+          },
+          {
+            "second": 9,
+            "count": 62
+          },
+          {
+            "second": 10,
+            "count": 6
+          },
+          {
+            "second": 45,
+            "count": 23
+          },
+          {
+            "second": 46,
+            "count": 25
+          },
+          {
+            "second": 47,
+            "count": 51
+          },
+          {
+            "second": 48,
+            "count": 62
+          },
+          {
+            "second": 49,
+            "count": 56
+          },
+          {
+            "second": 50,
+            "count": 52
+          },
+          {
+            "second": 51,
+            "count": 66
+          },
+          {
+            "second": 52,
+            "count": 55
+          },
+          {
+            "second": 53,
+            "count": 42
+          },
+          {
+            "second": 54,
+            "count": 79
+          },
+          {
+            "second": 55,
+            "count": 69
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 1181,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 2,
+            "count": 3
+          },
+          {
+            "second": 45,
+            "count": 88
+          },
+          {
+            "second": 46,
+            "count": 108
+          },
+          {
+            "second": 47,
+            "count": 85
+          },
+          {
+            "second": 48,
+            "count": 106
+          },
+          {
+            "second": 49,
+            "count": 108
+          },
+          {
+            "second": 50,
+            "count": 94
+          },
+          {
+            "second": 51,
+            "count": 97
+          },
+          {
+            "second": 52,
+            "count": 107
+          },
+          {
+            "second": 53,
+            "count": 86
+          },
+          {
+            "second": 54,
+            "count": 166
+          },
+          {
+            "second": 55,
+            "count": 130
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 1252,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 92
+          },
+          {
+            "second": 1,
+            "count": 106
+          },
+          {
+            "second": 2,
+            "count": 89
+          },
+          {
+            "second": 3,
+            "count": 107
+          },
+          {
+            "second": 4,
+            "count": 106
+          },
+          {
+            "second": 5,
+            "count": 86
+          },
+          {
+            "second": 6,
+            "count": 103
+          },
+          {
+            "second": 7,
+            "count": 65
+          },
+          {
+            "second": 8,
+            "count": 61
+          },
+          {
+            "second": 9,
+            "count": 72
+          },
+          {
+            "second": 10,
+            "count": 4
+          },
+          {
+            "second": 45,
+            "count": 22
+          },
+          {
+            "second": 46,
+            "count": 30
+          },
+          {
+            "second": 47,
+            "count": 19
+          },
+          {
+            "second": 48,
+            "count": 25
+          },
+          {
+            "second": 49,
+            "count": 26
+          },
+          {
+            "second": 50,
+            "count": 20
+          },
+          {
+            "second": 51,
+            "count": 27
+          },
+          {
+            "second": 52,
+            "count": 57
+          },
+          {
+            "second": 53,
+            "count": 41
+          },
+          {
+            "second": 54,
+            "count": 58
+          },
+          {
+            "second": 55,
+            "count": 36
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "chaos",
+  "rep": 1,
+  "deadLetterDelta": 0,
+  "retriesDelta": 2324
+}

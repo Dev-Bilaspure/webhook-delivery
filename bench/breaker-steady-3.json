@@ -1,0 +1,313 @@
+{
+  "profile": "steady",
+  "keyPrefix": "r45680000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 20,
+  "rate": 300,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 10018.742541,
+  "acceptRatePerSec": 299.43877564704457,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 45300.7065,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3006,
+    "accepted": 3000,
+    "rejected": 6,
+    "uniqueEvents": 3000,
+    "duplicates": 6,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 171.319678,
+      "p95Ms": 45193.865374,
+      "p99Ms": 45223.933224,
+      "maxMs": 45423.740728
+    },
+    "retried": {
+      "count": 6,
+      "p50Ms": 2141.036501,
+      "p95Ms": 47067.647501,
+      "p99Ms": 47067.647501,
+      "maxMs": 47067.647501
+    },
+    "inversions": 0,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 199
+      },
+      {
+        "second": 1,
+        "count": 216
+      },
+      {
+        "second": 2,
+        "count": 186
+      },
+      {
+        "second": 3,
+        "count": 203
+      },
+      {
+        "second": 4,
+        "count": 214
+      },
+      {
+        "second": 5,
+        "count": 182
+      },
+      {
+        "second": 6,
+        "count": 199
+      },
+      {
+        "second": 7,
+        "count": 213
+      },
+      {
+        "second": 8,
+        "count": 186
+      },
+      {
+        "second": 9,
+        "count": 199
+      },
+      {
+        "second": 10,
+        "count": 11
+      },
+      {
+        "second": 45,
+        "count": 93
+      },
+      {
+        "second": 46,
+        "count": 112
+      },
+      {
+        "second": 47,
+        "count": 95
+      },
+      {
+        "second": 48,
+        "count": 95
+      },
+      {
+        "second": 49,
+        "count": 107
+      },
+      {
+        "second": 50,
+        "count": 93
+      },
+      {
+        "second": 51,
+        "count": 100
+      },
+      {
+        "second": 52,
+        "count": 107
+      },
+      {
+        "second": 53,
+        "count": 93
+      },
+      {
+        "second": 54,
+        "count": 90
+      },
+      {
+        "second": 55,
+        "count": 13
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1005,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 99
+          },
+          {
+            "second": 1,
+            "count": 108
+          },
+          {
+            "second": 2,
+            "count": 93
+          },
+          {
+            "second": 3,
+            "count": 101
+          },
+          {
+            "second": 4,
+            "count": 107
+          },
+          {
+            "second": 5,
+            "count": 90
+          },
+          {
+            "second": 6,
+            "count": 102
+          },
+          {
+            "second": 7,
+            "count": 105
+          },
+          {
+            "second": 8,
+            "count": 95
+          },
+          {
+            "second": 9,
+            "count": 101
+          },
+          {
+            "second": 10,
+            "count": 4
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 1004,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 2,
+            "count": 3
+          },
+          {
+            "second": 45,
+            "count": 93
+          },
+          {
+            "second": 46,
+            "count": 112
+          },
+          {
+            "second": 47,
+            "count": 95
+          },
+          {
+            "second": 48,
+            "count": 95
+          },
+          {
+            "second": 49,
+            "count": 107
+          },
+          {
+            "second": 50,
+            "count": 93
+          },
+          {
+            "second": 51,
+            "count": 100
+          },
+          {
+            "second": 52,
+            "count": 107
+          },
+          {
+            "second": 53,
+            "count": 93
+          },
+          {
+            "second": 54,
+            "count": 90
+          },
+          {
+            "second": 55,
+            "count": 13
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 97
+          },
+          {
+            "second": 1,
+            "count": 108
+          },
+          {
+            "second": 2,
+            "count": 90
+          },
+          {
+            "second": 3,
+            "count": 102
+          },
+          {
+            "second": 4,
+            "count": 107
+          },
+          {
+            "second": 5,
+            "count": 92
+          },
+          {
+            "second": 6,
+            "count": 97
+          },
+          {
+            "second": 7,
+            "count": 108
+          },
+          {
+            "second": 8,
+            "count": 91
+          },
+          {
+            "second": 9,
+            "count": 98
+          },
+          {
+            "second": 10,
+            "count": 7
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "breaker",
+  "rep": 3,
+  "deadLetterDelta": 0,
+  "retriesDelta": 1001
+}

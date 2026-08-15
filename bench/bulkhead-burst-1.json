@@ -1,0 +1,306 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r591375000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 404.806333,
+  "acceptRatePerSec": 7410.9512511011035,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 600060.760959,
+  "drainReason": "gave up after 10m0s",
+  "unaccounted": 925,
+  "missingIds": "1877892e-60ba-433d-bfeb-3c41a13ff65d d9782b8e-c7ae-42ae-9a59-ba9e20b85803 1bd14f95-4457-4c03-9975-6aed6d16ada1 edcb68e5-6b7d-433c-9872-85cca99b24c0 8cb1989a-d6f9-49b9-b263-a37a0fb9cd66 7b655d25-5e47-4f3b-86da-cf1081328403 b61d8731-dc41-46b1-bf82-d1db677a71b5 741b1429-80b9-4af5-9c44-fbf38592aa68 26e41939-577d-4ebd-9472-bf5df1c50ca0 3db9dc49-760d-4f4d-85f0-4c6c142afd97 ...",
+  "stats": {
+    "deliveries": 2094,
+    "accepted": 2094,
+    "rejected": 0,
+    "uniqueEvents": 2075,
+    "duplicates": 19,
+    "firstAttempt": {
+      "count": 2075,
+      "p50Ms": 29998.192,
+      "p95Ms": 50019.375,
+      "p99Ms": 232188.318,
+      "maxMs": 570103.077
+    },
+    "retried": {
+      "count": 19,
+      "p50Ms": 12038.606,
+      "p95Ms": 122276.448,
+      "p99Ms": 122276.448,
+      "maxMs": 122276.448
+    },
+    "inversions": 0,
+    "orderingKeys": 330,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 118
+      },
+      {
+        "second": 10,
+        "count": 15
+      },
+      {
+        "second": 12,
+        "count": 15
+      },
+      {
+        "second": 20,
+        "count": 10
+      },
+      {
+        "second": 30,
+        "count": 1295
+      },
+      {
+        "second": 40,
+        "count": 2
+      },
+      {
+        "second": 50,
+        "count": 609
+      },
+      {
+        "second": 67,
+        "count": 3
+      },
+      {
+        "second": 122,
+        "count": 3
+      },
+      {
+        "second": 177,
+        "count": 2
+      },
+      {
+        "second": 185,
+        "count": 1
+      },
+      {
+        "second": 232,
+        "count": 2
+      },
+      {
+        "second": 240,
+        "count": 1
+      },
+      {
+        "second": 287,
+        "count": 2
+      },
+      {
+        "second": 295,
+        "count": 1
+      },
+      {
+        "second": 342,
+        "count": 2
+      },
+      {
+        "second": 350,
+        "count": 1
+      },
+      {
+        "second": 397,
+        "count": 2
+      },
+      {
+        "second": 405,
+        "count": 1
+      },
+      {
+        "second": 452,
+        "count": 2
+      },
+      {
+        "second": 460,
+        "count": 1
+      },
+      {
+        "second": 507,
+        "count": 2
+      },
+      {
+        "second": 515,
+        "count": 1
+      },
+      {
+        "second": 562,
+        "count": 2
+      },
+      {
+        "second": 570,
+        "count": 1
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1005,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 49
+          },
+          {
+            "second": 30,
+            "count": 638
+          },
+          {
+            "second": 50,
+            "count": 318
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 92,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 15
+          },
+          {
+            "second": 10,
+            "count": 15
+          },
+          {
+            "second": 12,
+            "count": 15
+          },
+          {
+            "second": 20,
+            "count": 10
+          },
+          {
+            "second": 30,
+            "count": 5
+          },
+          {
+            "second": 40,
+            "count": 2
+          },
+          {
+            "second": 67,
+            "count": 3
+          },
+          {
+            "second": 122,
+            "count": 3
+          },
+          {
+            "second": 177,
+            "count": 2
+          },
+          {
+            "second": 185,
+            "count": 1
+          },
+          {
+            "second": 232,
+            "count": 2
+          },
+          {
+            "second": 240,
+            "count": 1
+          },
+          {
+            "second": 287,
+            "count": 2
+          },
+          {
+            "second": 295,
+            "count": 1
+          },
+          {
+            "second": 342,
+            "count": 2
+          },
+          {
+            "second": 350,
+            "count": 1
+          },
+          {
+            "second": 397,
+            "count": 2
+          },
+          {
+            "second": 405,
+            "count": 1
+          },
+          {
+            "second": 452,
+            "count": 2
+          },
+          {
+            "second": 460,
+            "count": 1
+          },
+          {
+            "second": 507,
+            "count": 2
+          },
+          {
+            "second": 515,
+            "count": 1
+          },
+          {
+            "second": 562,
+            "count": 2
+          },
+          {
+            "second": 570,
+            "count": 1
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 997,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 54
+          },
+          {
+            "second": 30,
+            "count": 652
+          },
+          {
+            "second": 50,
+            "count": 291
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "bulkhead",
+  "rep": 1,
+  "deadLetterDelta": 0,
+  "retriesDelta": 11558
+}

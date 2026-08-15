@@ -1,0 +1,333 @@
+{
+  "profile": "burst",
+  "keyPrefix": "r53336000",
+  "events": 3000,
+  "keys": 400,
+  "hosts": 3,
+  "concurrency": 100,
+  "rate": 500,
+  "submitted": 3000,
+  "acceptErrors": 0,
+  "submitMs": 414.381583,
+  "acceptRatePerSec": 7239.703990416003,
+  "keyCollisions": 0,
+  "drained": true,
+  "drainedMs": 144160.607667,
+  "drainReason": "every submitted event arrived",
+  "unaccounted": 0,
+  "stats": {
+    "deliveries": 3903,
+    "accepted": 3000,
+    "rejected": 903,
+    "uniqueEvents": 3000,
+    "duplicates": 903,
+    "firstAttempt": {
+      "count": 3000,
+      "p50Ms": 37.702,
+      "p95Ms": 45042.995,
+      "p99Ms": 90217.729,
+      "maxMs": 143257.517
+    },
+    "retried": {
+      "count": 903,
+      "p50Ms": 47038.628,
+      "p95Ms": 94318.944,
+      "p99Ms": 137017.842,
+      "maxMs": 143628.198
+    },
+    "inversions": 7,
+    "orderingKeys": 400,
+    "throughput": [
+      {
+        "second": 0,
+        "count": 1664
+      },
+      {
+        "second": 2,
+        "count": 49
+      },
+      {
+        "second": 45,
+        "count": 1649
+      },
+      {
+        "second": 47,
+        "count": 70
+      },
+      {
+        "second": 49,
+        "count": 219
+      },
+      {
+        "second": 51,
+        "count": 18
+      },
+      {
+        "second": 53,
+        "count": 24
+      },
+      {
+        "second": 57,
+        "count": 21
+      },
+      {
+        "second": 61,
+        "count": 2
+      },
+      {
+        "second": 65,
+        "count": 7
+      },
+      {
+        "second": 90,
+        "count": 24
+      },
+      {
+        "second": 92,
+        "count": 10
+      },
+      {
+        "second": 94,
+        "count": 89
+      },
+      {
+        "second": 102,
+        "count": 7
+      },
+      {
+        "second": 106,
+        "count": 1
+      },
+      {
+        "second": 110,
+        "count": 3
+      },
+      {
+        "second": 135,
+        "count": 35
+      },
+      {
+        "second": 137,
+        "count": 3
+      },
+      {
+        "second": 141,
+        "count": 3
+      },
+      {
+        "second": 143,
+        "count": 5
+      }
+    ],
+    "byAddr": {
+      ":8080": {
+        "deliveries": 1308,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 1005
+          },
+          {
+            "second": 2,
+            "count": 23
+          },
+          {
+            "second": 45,
+            "count": 215
+          },
+          {
+            "second": 49,
+            "count": 50
+          },
+          {
+            "second": 57,
+            "count": 7
+          },
+          {
+            "second": 90,
+            "count": 2
+          },
+          {
+            "second": 94,
+            "count": 3
+          },
+          {
+            "second": 106,
+            "count": 1
+          },
+          {
+            "second": 110,
+            "count": 1
+          },
+          {
+            "second": 135,
+            "count": 1
+          }
+        ]
+      },
+      ":8081": {
+        "deliveries": 1298,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 3
+          },
+          {
+            "second": 2,
+            "count": 3
+          },
+          {
+            "second": 45,
+            "count": 958
+          },
+          {
+            "second": 47,
+            "count": 56
+          },
+          {
+            "second": 49,
+            "count": 92
+          },
+          {
+            "second": 51,
+            "count": 15
+          },
+          {
+            "second": 53,
+            "count": 15
+          },
+          {
+            "second": 57,
+            "count": 5
+          },
+          {
+            "second": 65,
+            "count": 4
+          },
+          {
+            "second": 90,
+            "count": 19
+          },
+          {
+            "second": 92,
+            "count": 10
+          },
+          {
+            "second": 94,
+            "count": 70
+          },
+          {
+            "second": 102,
+            "count": 2
+          },
+          {
+            "second": 110,
+            "count": 2
+          },
+          {
+            "second": 135,
+            "count": 33
+          },
+          {
+            "second": 137,
+            "count": 3
+          },
+          {
+            "second": 141,
+            "count": 3
+          },
+          {
+            "second": 143,
+            "count": 5
+          }
+        ]
+      },
+      ":8082": {
+        "deliveries": 1297,
+        "firstAttempt": {
+          "count": 0,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "p99Ms": 0,
+          "maxMs": 0
+        },
+        "throughput": [
+          {
+            "second": 0,
+            "count": 656
+          },
+          {
+            "second": 2,
+            "count": 23
+          },
+          {
+            "second": 45,
+            "count": 476
+          },
+          {
+            "second": 47,
+            "count": 14
+          },
+          {
+            "second": 49,
+            "count": 77
+          },
+          {
+            "second": 51,
+            "count": 3
+          },
+          {
+            "second": 53,
+            "count": 9
+          },
+          {
+            "second": 57,
+            "count": 9
+          },
+          {
+            "second": 61,
+            "count": 2
+          },
+          {
+            "second": 65,
+            "count": 3
+          },
+          {
+            "second": 90,
+            "count": 3
+          },
+          {
+            "second": 94,
+            "count": 16
+          },
+          {
+            "second": 102,
+            "count": 5
+          },
+          {
+            "second": 135,
+            "count": 1
+          }
+        ]
+      }
+    }
+  },
+  "scenario": "chaos",
+  "rep": 1,
+  "deadLetterDelta": 0,
+  "retriesDelta": 2402
+}
