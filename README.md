@@ -194,6 +194,70 @@ constant tax.
 
 ## Benchmarking
 
+The harness is a bigger piece of work than the service it measures. The service is a black box
+here; everything else is test infrastructure.
+
+```
+                   ┌──────────────────────────────────────┐
+                   │          scripts/bench.sh            │
+                   │                                      │
+                   │  clear faults                        │
+                   │  wait for consumer lag = 0           │
+                   │  reset store                         │
+                   │  set this scenario's fault           │
+                   │  run tester, capture JSON            │
+                   └──┬────────────────┬───────────────┬──┘
+                      │                │               │
+   POST /control ─────┘           run  │               └───── docker exec:
+   POST /reset                         │                      lag, topic depth
+        │                              ▼                            │
+        │              ┌───────────────────────────┐                │
+        │              │        cmd/tester         │                │
+        │              │  steady: ticker +         │                │
+        │              │          free-key pool    │                │
+        │              │  burst:  N goroutines     │                │
+        │              └─────────────┬─────────────┘                │
+        │                            │ POST /events                 │
+        │                            ▼                              ▼
+        │   ╔══════════════════════════════════════════════════════════╗
+        │   ║  SYSTEM UNDER TEST                                       ║
+        │   ║  api · kafka · delivery worker · retry worker            ║
+        │   ╚═════════════════════════╤════════════════════════════════╝
+        │                             │ POST /webhook/{key}
+        ▼                             ▼
+   ┌──────────────────────────────────────────────────────────┐
+   │  cmd/receiver                                            │
+   │                                                          │
+   │     :8080          :8081          :8082                  │
+   │       │              │              │      three fake    │
+   │   injector       injector       injector      customers  │
+   │       └──────────────┼──────────────┘                    │
+   │                      ▼                                   │
+   │               one shared store                           │
+   │      key · seq · addr · status · arrived · latency       │
+   └──────────────────────┬───────────────────────────────────┘
+                          │  GET /stats?prefix=
+                          │  GET /keys?prefix=
+                          ▼
+              tester polls once a second until
+              every submitted id has arrived
+                          │
+                          ▼
+        bench/<scenario>-<profile>-<rep>.json
+                          │
+                          ▼
+               scripts/summarise.py
+               median and range across reps
+```
+
+Three separate concerns, which is why the receiver has a control endpoint at all:
+
+- **Control** goes down the left. `bench.sh` sets each fake customer's behaviour at runtime, and
+  can change it mid-run, which is the only way to watch a circuit breaker recover.
+- **Data** goes down the middle. The tester submits, the system delivers, the receiver answers.
+- **Measurement** comes back from two places. The receiver knows what arrived and when; Kafka
+  knows what was dead-lettered and retried. Neither alone can tell you whether an event was lost.
+
 ```sh
 make bench            # every scenario, both load profiles, 3 reps, then the table
 make bench-quick      # one rep, steady only
