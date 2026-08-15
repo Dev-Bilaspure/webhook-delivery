@@ -29,7 +29,7 @@ Services reach Kafka at `kafka:29092` on the compose network. Start Kafka + topi
 docker compose up -d kafka kafka-init
 ```
 
-Then (network is usually `go-proj_default` — check `docker network ls`):
+Then (network is usually `go-proj_default`, check `docker network ls`):
 
 ```sh
 docker run -d --name api --network go-proj_default \
@@ -45,7 +45,7 @@ docker run -d --name worker-3 --network go-proj_default -e KAFKA_BROKERS=kafka:2
 docker run -d --name retry-worker --network go-proj_default -e KAFKA_BROKERS=kafka:29092 webhook/retry-worker
 ```
 
-Send an event (endpoint host is the receiver's container name — delivery happens inside the network):
+Send an event (endpoint host is the receiver's container name; delivery happens inside the network):
 
 ```sh
 curl -sXPOST localhost:8000/events \

@@ -81,7 +81,7 @@ def main():
                     print("LOSS: %s rep %d, %d unaccounted with no durable home" % (
                         name, run["rep"], outstanding))
             if run["keyCollisions"] > 0:
-                print("NOTE: %s rep %d, %d collisions — offered rate not held" % (
+                print("NOTE: %s rep %d, %d collisions, offered rate not held" % (
                     name, run["rep"], run["keyCollisions"]))
 
     return 0
